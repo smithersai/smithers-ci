@@ -22,7 +22,7 @@ Smithers Cloud is the home where TODOs, stacked changesets, Lighthouse backpress
 1. **Trusted Audit Gate:** On every push to `main`, `.github/workflows/smithers-mirror-release.yml` runs the full strict typecheck, security tests, wiki check, `home.json` schema check, Mythical History verification, and Lighthouse Backpressure Audit.
 2. **Shared Object Store Upload:** The verified JSON and HTML Lighthouse reports upload to the shared object store and attach to the GitHub Actions run summary.
 3. **Docs, Wiki, and Factory UI Publish:** The React Factory UI, Obsidian wiki pages, `llms.txt`, and latest audit snapshot build and deploy automatically to Cloudflare (`ci.smithers.sh`) whenever `CLOUDFLARE_API_TOKEN` is configured.
-4. **Release Automation:** Tagging a release or bumping `package.json` packs and publishes verified tarballs with npm provenance and creates a GitHub Release automatically.
+4. **Release Automation:** A `v*` tag triggers the release job. The build packs the JavaScript CLI, public ES modules and TypeScript declarations. A clean npm consumer verifies the CLI and imports before the job publishes that same tarball to the `next` tag with provenance. The job needs npm publishing credentials.
 
 ## Community Pull Requests
 

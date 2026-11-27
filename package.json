@@ -14,24 +14,55 @@
     "url": "https://github.com/smithersai/smithers-ci/issues"
   },
   "bin": {
-    "smithers-ci": "./bin/smithers-ci.mjs"
+    "smithers-ci": "./dist/bin/smithers-ci.mjs"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./trust": "./src/trust/ExecutionTrust.ts",
-    "./auth": "./src/auth/OneTimeToken.ts",
-    "./store": "./src/store/ObjectStore.ts",
-    "./audit": "./src/audit/AuditEngine.ts",
-    "./replay": "./src/ci/ReplayEngine.ts",
-    "./history": "./src/history/MythicalHistory.ts",
-    "./wiki": "./src/wiki/WikiEngine.ts",
-    "./factory": "./src/factory/FactoryState.ts",
-    "./mcp": "./src/mcp/McpServer.ts"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./trust": {
+      "types": "./dist/src/trust/ExecutionTrust.d.ts",
+      "default": "./dist/src/trust/ExecutionTrust.js"
+    },
+    "./auth": {
+      "types": "./dist/src/auth/OneTimeToken.d.ts",
+      "default": "./dist/src/auth/OneTimeToken.js"
+    },
+    "./store": {
+      "types": "./dist/src/store/ObjectStore.d.ts",
+      "default": "./dist/src/store/ObjectStore.js"
+    },
+    "./audit": {
+      "types": "./dist/src/audit/AuditEngine.d.ts",
+      "default": "./dist/src/audit/AuditEngine.js"
+    },
+    "./replay": {
+      "types": "./dist/src/ci/ReplayEngine.d.ts",
+      "default": "./dist/src/ci/ReplayEngine.js"
+    },
+    "./history": {
+      "types": "./dist/src/history/MythicalHistory.d.ts",
+      "default": "./dist/src/history/MythicalHistory.js"
+    },
+    "./wiki": {
+      "types": "./dist/src/wiki/WikiEngine.d.ts",
+      "default": "./dist/src/wiki/WikiEngine.js"
+    },
+    "./factory": {
+      "types": "./dist/src/factory/FactoryState.d.ts",
+      "default": "./dist/src/factory/FactoryState.js"
+    },
+    "./mcp": {
+      "types": "./dist/src/mcp/McpServer.d.ts",
+      "default": "./dist/src/mcp/McpServer.js"
+    }
   },
   "files": [
-    "bin/*.mjs",
+    "dist/bin/",
+    "dist/src/",
+    "dist/ui/",
     "src/**/*.ts",
-    "dist/**",
     "wiki/**/*.md",
     "history/**/*.json",
     ".smithers/home.json",
@@ -60,7 +91,10 @@
     "dev:ui": "vite --config app/vite.config.ts",
     "build:ui": "bun run snapshot:generate && vite build --config app/vite.config.ts",
     "medium-check": "bun run fast-check && bun run wiki:check && bun run home:check && bun run history:verify && bun run audit",
-    "full-check": "bun run medium-check && bun run build:ui"
+    "full-check": "bun run medium-check && bun run build:ui && bun run check:package",
+    "build:package": "tsc -p tsconfig.package.json",
+    "prepack": "npm run build:package",
+    "check:package": "node scripts/check-package.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",

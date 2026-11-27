@@ -55,3 +55,7 @@ bun run dev:ui
 - [Cloud MCP & One-Time Auth](wiki/mcp-and-one-time-auth.md)
 - [Contributing Guide](CONTRIBUTING.md)
 - [Maintainer Guide](MAINTAINERS.md)
+
+## Check the npm package
+
+Run `bun install --frozen-lockfile` and `bun run check:package` to build and test the tarball in `dist/npm/`. The check installs it in a fresh project, verifies each public export and its declarations, and runs CLI help and inventory.

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "rewriteRelativeImportExtensions": true,
+    "declaration": true,
+    "noEmit": false,
+    "noEmitOnError": true,
+    "rootDir": ".",
+    "outDir": "dist"
+  },
+  "include": ["bin/smithers-ci.mjs", "src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}
