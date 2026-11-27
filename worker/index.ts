@@ -226,14 +226,15 @@ export default {
       return jsonResponse(FACTORY_SNAPSHOT.untrustedAudit)
     }
 
-    // Stateful Durable Object routes: MCP, one-time token mint & exchange, live factory state, waitlist
+    // Stateful Durable Object routes: POST MCP, one-time token mint & exchange, live factory state, waitlist
     if (
-      url.pathname === "/mcp" ||
-      url.pathname === "/smithersai/smithers-ci/mcp" ||
-      url.pathname === "/smithersai/smithers-ci/mcp/exchange" ||
-      url.pathname === "/smithersai/smithers-ci/mcp/mint" ||
-      url.pathname === "/api/factory" ||
-      url.pathname === "/api/waitlist"
+      (request.method === "POST" &&
+        (url.pathname === "/mcp" ||
+          url.pathname === "/smithersai/smithers-ci/mcp" ||
+          url.pathname === "/smithersai/smithers-ci/mcp/exchange" ||
+          url.pathname === "/smithersai/smithers-ci/mcp/mint" ||
+          url.pathname === "/api/waitlist")) ||
+      (request.method === "GET" && url.pathname === "/api/factory")
     ) {
       // Strip any untrusted caller-spoofed control plane header; only set it if valid bearer control secret matches.
       const forwardedHeaders = new Headers(request.headers)
@@ -248,7 +249,7 @@ export default {
       }
 
       let bodyBytes: ArrayBuffer | undefined
-      if (request.method !== "GET" && request.method !== "HEAD") {
+      if (request.method === "POST") {
         const readRes = await readBoundedBody(request, MAX_REQUEST_BODY_BYTES)
         if (!readRes.ok) {
           return jsonResponse(
