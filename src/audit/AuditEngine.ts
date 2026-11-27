@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
+import { inventoryGithubWorkflows } from "../ci/WorkflowInventory.ts"
 import {
   ROOT_INPUT_TRACING_TABLE,
   type GateCheckResult,
@@ -539,21 +540,27 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     ]
   })
 
+  const wfInventory = inventoryGithubWorkflows(root)
   const mirrorReleaseExists = existsSync(join(root, ".github", "workflows", "smithers-mirror-release.yml"))
   const untrustedPrExists = existsSync(join(root, ".github", "workflows", "untrusted-pr-check.yml"))
+  const workflowsHealthy = mirrorReleaseExists && untrustedPrExists && wfInventory.untrustedSafe
   audits.push({
     id: "github-mirror-release-pipeline",
     category: "release-cloud",
     title: "Auto-Release & Docs Publish on Mirror Merge",
-    description: "Merging from Smithers Cloud to GitHub automatically triggers audits, docs publishing, and releases.",
-    status: mirrorReleaseExists && untrustedPrExists ? "pass" : "fail",
-    score: mirrorReleaseExists && untrustedPrExists ? 100 : 0,
+    description: "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
+    status: workflowsHealthy ? "pass" : "fail",
+    score: workflowsHealthy ? 100 : 20,
     weight: 3,
-    displayValue: mirrorReleaseExists && untrustedPrExists ? "2 workflows armed" : "Workflows missing",
-    durationMs: 10,
+    displayValue: workflowsHealthy
+      ? `${wfInventory.workflows.length} workflows / ${wfInventory.totalJobs} jobs clean`
+      : `${wfInventory.totalSecurityFindings} findings`,
+    durationMs: 14,
     evidence: [
+      `Inventoried ${wfInventory.workflows.length} workflows (${wfInventory.totalJobs} jobs, ${wfInventory.totalSteps} steps)`,
       mirrorReleaseExists ? ".github/workflows/smithers-mirror-release.yml armed on main" : "Missing mirror release workflow",
-      untrustedPrExists ? ".github/workflows/untrusted-pr-check.yml isolates fork PRs" : "Missing untrusted PR workflow"
+      untrustedPrExists ? ".github/workflows/untrusted-pr-check.yml isolates fork PRs" : "Missing untrusted PR workflow",
+      ...wfInventory.workflows.flatMap((w) => w.securityFindings)
     ]
   })
 

@@ -34,7 +34,7 @@ export interface FactorySnapshot {
 }
 
 export const FACTORY_SNAPSHOT: FactorySnapshot = {
-  "generatedAt": "2026-11-27T07:56:44.741Z",
+  "generatedAt": "2026-11-27T08:02:47.145Z",
   "repository": "smithersai/smithers-ci",
   "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
   "cloudUrl": "https://smithers.sh/smithersai/smithers-ci",
@@ -44,7 +44,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "objectStoreEndpoint": "https://build.smithers.sh",
   "trustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-27T07:56:44.753Z",
+    "generatedAt": "2026-11-27T08:02:47.149Z",
     "repository": "smithersai/smithers-ci",
     "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
     "execution": {
@@ -58,7 +58,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": true,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-27T07:56:44.748Z"
+      "verifiedAt": "2026-11-27T08:02:47.146Z"
     },
     "policy": {
       "allowExecution": true,
@@ -429,13 +429,14 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "id": "github-mirror-release-pipeline",
             "category": "release-cloud",
             "title": "Auto-Release & Docs Publish on Mirror Merge",
-            "description": "Merging from Smithers Cloud to GitHub automatically triggers audits, docs publishing, and releases.",
+            "description": "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "2 workflows armed",
-            "durationMs": 10,
+            "displayValue": "2 workflows / 4 jobs clean",
+            "durationMs": 14,
             "evidence": [
+              "Inventoried 2 workflows (4 jobs, 20 steps)",
               ".github/workflows/smithers-mirror-release.yml armed on main",
               ".github/workflows/untrusted-pr-check.yml isolates fork PRs"
             ]
@@ -549,7 +550,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   },
   "untrustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-27T07:56:44.756Z",
+    "generatedAt": "2026-11-27T08:02:47.150Z",
     "repository": "smithersai/smithers-ci",
     "commitSha": "572c6e21abcd1234567890abcdef1234567890ef",
     "execution": {
@@ -563,7 +564,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": false,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-27T07:56:44.748Z"
+      "verifiedAt": "2026-11-27T08:02:47.146Z"
     },
     "policy": {
       "allowExecution": true,
@@ -934,13 +935,14 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "id": "github-mirror-release-pipeline",
             "category": "release-cloud",
             "title": "Auto-Release & Docs Publish on Mirror Merge",
-            "description": "Merging from Smithers Cloud to GitHub automatically triggers audits, docs publishing, and releases.",
+            "description": "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "2 workflows armed",
-            "durationMs": 10,
+            "displayValue": "2 workflows / 4 jobs clean",
+            "durationMs": 14,
             "evidence": [
+              "Inventoried 2 workflows (4 jobs, 20 steps)",
               ".github/workflows/smithers-mirror-release.yml armed on main",
               ".github/workflows/untrusted-pr-check.yml isolates fork PRs"
             ]
@@ -1055,54 +1057,54 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "storeStats": {
     "endpoint": "https://build.smithers.sh",
     "localRoot": "/Users/williamcory/smithers-ci/.smithers/object-store",
-    "casObjects": 15,
+    "casObjects": 20,
     "actionCacheEntries": 0,
     "trustedArtifacts": 2,
     "untrustedArtifacts": 3,
-    "totalBytes": 390286
+    "totalBytes": 520635
   },
   "artifacts": [
     {
       "name": "community-preview-audit.json",
       "namespace": "untrusted/alice-dev/572c6e21abcd1234567890abcdef1234567890ef",
       "key": "untrusted/alice-dev/572c6e21abcd1234567890abcdef1234567890ef/community-preview-audit.json",
-      "sha256": "4d8e7f0e88828392b99b4c69b010bd19b1cda73ac0ca3111f0d6cc3172708c46",
-      "bytes": 18642,
+      "sha256": "0c194f51c6059cb99b9106455c556dde97bf01937cc2793f3b807ce3bc69d9a1",
+      "bytes": 18710,
       "contentType": "application/json",
       "visibility": "public",
       "trustTier": "untrusted:community",
       "trusted": false,
       "actor": "alice-dev",
       "commitSha": "572c6e21abcd1234567890abcdef1234567890ef",
-      "createdAt": "2026-11-27T07:56:44.768Z"
+      "createdAt": "2026-11-27T08:02:47.185Z"
     },
     {
       "name": "lighthouse-audit.html",
       "namespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
       "key": "trusted/46412bca49c3a0f1234567890abcdef123456789/lighthouse-audit.html",
-      "sha256": "b40753bb9bcd9dbefd1a4db45c278c7772ee841cdbfd29e44d88f52f66873634",
-      "bytes": 37178,
+      "sha256": "e47f06fac1477cdbbb9df1862af7b6e33874ca2382022080dd7b3c0d92200366",
+      "bytes": 37252,
       "contentType": "text/html; charset=utf-8",
       "visibility": "public",
       "trustTier": "trusted:sandbox",
       "trusted": true,
       "actor": "cfbox-gate-04",
       "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
-      "createdAt": "2026-11-27T07:56:44.766Z"
+      "createdAt": "2026-11-27T08:02:47.162Z"
     },
     {
       "name": "lighthouse-audit.json",
       "namespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
       "key": "trusted/46412bca49c3a0f1234567890abcdef123456789/lighthouse-audit.json",
-      "sha256": "c1cd4a2d45e244ddd46084621d4857fa8ef25efb78ea47db22c830232a28d639",
-      "bytes": 18511,
+      "sha256": "a62ff671ec779faa63f5b9b5565b447c19790112e96bd9ed7656472d3b14134a",
+      "bytes": 18579,
       "contentType": "application/json",
       "visibility": "public",
       "trustTier": "trusted:sandbox",
       "trusted": true,
       "actor": "cfbox-gate-04",
       "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
-      "createdAt": "2026-11-27T07:56:44.763Z"
+      "createdAt": "2026-11-27T08:02:47.151Z"
     },
     {
       "name": "lighthouse-audit.html",

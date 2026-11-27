@@ -98,7 +98,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
 <main>
   <div class="topbar">
     <h1>Smithers CI Backpressure Audit Report</h1>
-    <div class="meta">smithersai/smithers-ci @ 46412bca49c3 · 2026-11-27T07:56:44.753Z</div>
+    <div class="meta">smithersai/smithers-ci @ 46412bca49c3 · 2026-11-27T08:02:47.149Z</div>
   </div>
 
   <div class="banner banner-trusted">
@@ -619,14 +619,14 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
       <span class="audit-title">Auto-Release &amp; Docs Publish on Mirror Merge</span>
-      <span class="audit-value">2 workflows armed</span>
+      <span class="audit-value">2 workflows / 4 jobs clean</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
-      <p>Merging from Smithers Cloud to GitHub automatically triggers audits, docs publishing, and releases.</p>
-      <ul class="evidence-list"><li><code>.github/workflows/smithers-mirror-release.yml armed on main</code></li><li><code>.github/workflows/untrusted-pr-check.yml isolates fork PRs</code></li></ul>
+      <p>Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.</p>
+      <ul class="evidence-list"><li><code>Inventoried 2 workflows (4 jobs, 20 steps)</code></li><li><code>.github/workflows/smithers-mirror-release.yml armed on main</code></li><li><code>.github/workflows/untrusted-pr-check.yml isolates fork PRs</code></li></ul>
       
-      <div class="audit-meta">ID: <code>github-mirror-release-pipeline</code> · Weight: 3 · 10ms</div>
+      <div class="audit-meta">ID: <code>github-mirror-release-pipeline</code> · Weight: 3 · 14ms</div>
     </div>
   </details>
 

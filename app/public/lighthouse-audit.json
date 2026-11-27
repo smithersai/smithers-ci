@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-11-27T07:56:44.753Z",
+  "generatedAt": "2026-11-27T08:02:47.149Z",
   "repository": "smithersai/smithers-ci",
   "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
   "execution": {
@@ -14,7 +14,7 @@
     "trusted": true,
     "downgraded": false,
     "downgradeReason": null,
-    "verifiedAt": "2026-11-27T07:56:44.748Z"
+    "verifiedAt": "2026-11-27T08:02:47.146Z"
   },
   "policy": {
     "allowExecution": true,
@@ -385,13 +385,14 @@
           "id": "github-mirror-release-pipeline",
           "category": "release-cloud",
           "title": "Auto-Release & Docs Publish on Mirror Merge",
-          "description": "Merging from Smithers Cloud to GitHub automatically triggers audits, docs publishing, and releases.",
+          "description": "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
           "status": "pass",
           "score": 100,
           "weight": 3,
-          "displayValue": "2 workflows armed",
-          "durationMs": 10,
+          "displayValue": "2 workflows / 4 jobs clean",
+          "durationMs": 14,
           "evidence": [
+            "Inventoried 2 workflows (4 jobs, 20 steps)",
             ".github/workflows/smithers-mirror-release.yml armed on main",
             ".github/workflows/untrusted-pr-check.yml isolates fork PRs"
           ]

@@ -7,5 +7,14 @@ directory = "./dist/ui"
 binding = "ASSETS"
 not_found_handling = "none"
 
+[durable_objects]
+bindings = [
+  { name = "FACTORY_HUB", class_name = "FactoryHubDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FactoryHubDO"]
+
 [vars]
-SMITHERS_BASE_URL = "https://smithers.sh"
+SMITHERS_BASE_URL = "https://smithers-ci-factory.willcory10.workers.dev"

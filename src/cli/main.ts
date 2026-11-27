@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto"
 import { createServer } from "node:http"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
@@ -8,6 +9,7 @@ import {
   formatBootstrapEnvelope,
   writeTokenFile
 } from "../auth/OneTimeToken.ts"
+import { inventoryGithubWorkflows } from "../ci/WorkflowInventory.ts"
 import { validateHomeJson } from "../factory/Audience.ts"
 import { FactoryState } from "../factory/FactoryState.ts"
 import {
@@ -52,6 +54,7 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
         "",
         "Commands:",
         "  smithers-ci audit [--trust <tier>] [--out <dir>]     Run Lighthouse backpressure audit",
+        "  smithers-ci inventory [--json]                       Inventory GitHub workflows and audit PR secret isolation",
         "  smithers-ci auth mint --subject <id> [--tier <tier>] [--scopes <csv>] [--out <file>]",
         "  smithers-ci wiki check                               Verify Obsidian wiki links and diagrams",
         "  smithers-ci home check                               Validate .smithers/home.json against Home.read bounds",
@@ -63,11 +66,29 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
     return 0
   }
 
+  if (cmd === "inventory") {
+    const inv = inventoryGithubWorkflows(repoRoot)
+    if (argv.includes("--json")) {
+      console.log(JSON.stringify(inv, null, 2))
+    } else {
+      console.log(
+        `Smithers CI Workflow Inventory: ${inv.workflows.length} workflows, ${inv.totalJobs} jobs, ${inv.totalSteps} steps, ${inv.totalSecurityFindings} security findings`
+      )
+      for (const wf of inv.workflows) {
+        console.log(`  - ${wf.file} (${wf.triggers.join(", ")}): ${wf.jobs.length} jobs`)
+        for (const f of wf.securityFindings) console.error(`    SECURITY: ${f}`)
+      }
+    }
+    return inv.untrustedSafe ? 0 : 1
+  }
+
   if (cmd === "audit") {
     const requestedTier = (parseFlag(argv, "--trust") ?? "trusted:sandbox") as TrustTier
     const outDir = resolve(repoRoot, parseFlag(argv, "--out") ?? ".smithers/reports")
-    const commitSha = process.env.SMITHERS_COMMIT_SHA ?? process.env.GITHUB_SHA ?? DEFAULT_SHA
-    const secret = process.env.SMITHERS_CONTROL_SECRET ?? "local-dev-ephemeral-signing-secret-v1"
+    const rawSha = (process.env.SMITHERS_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "").trim()
+    const commitSha = /^[0-9a-f]{40}$/i.test(rawSha) ? rawSha.toLowerCase() : DEFAULT_SHA
+    const envSecret = (process.env.SMITHERS_CONTROL_SECRET ?? "").trim()
+    const secret = envSecret.length >= 16 ? envSecret : randomBytes(24).toString("hex")
     const now = new Date()
     const issuedAt = now.toISOString()
     const expiresAt = new Date(now.getTime() + 600_000).toISOString()

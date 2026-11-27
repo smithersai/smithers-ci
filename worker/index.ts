@@ -1,190 +1,40 @@
 import { FACTORY_SNAPSHOT } from "../app/src/data/generatedSnapshot.ts"
+import { FactoryHubDO } from "./FactoryHubDO.ts"
+
+export { FactoryHubDO }
+
+export interface DurableNamespaceLike {
+  idFromName(name: string): unknown
+  get(id: unknown): { fetch(request: Request): Promise<Response> }
+}
 
 export interface WorkerEnv {
   readonly ASSETS?: {
     fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
   }
+  readonly FACTORY_HUB?: DurableNamespaceLike
   readonly SMITHERS_BASE_URL?: string
+  readonly SMITHERS_CONTROL_SECRET?: string
 }
 
-const PROTOCOL_VERSION = "2025-11-25"
-const PERSON_ONLY = new Set<string>(FACTORY_SNAPSHOT.personOnlyActions)
+const fallbackHub = new FactoryHubDO({ storage: {} })
 
-function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
+function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body, null, 2), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
-      "x-content-type-options": "nosniff",
-      ...extraHeaders
+      "x-content-type-options": "nosniff"
     }
   })
 }
 
-async function handleMcpRpc(request: Request, origin: string): Promise<Response> {
-  let payload: { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown> }
-  try {
-    payload = (await request.json()) as typeof payload
-  } catch {
-    return jsonResponse(
-      { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error: invalid JSON" } },
-      400
-    )
+function getHub(env: WorkerEnv): { fetch(request: Request): Promise<Response> } {
+  if (env.FACTORY_HUB) {
+    return env.FACTORY_HUB.get(env.FACTORY_HUB.idFromName("smithersai/smithers-ci"))
   }
-
-  const id = payload.id ?? null
-  const method = payload.method ?? ""
-
-  if (method === "initialize") {
-    return jsonResponse({
-      jsonrpc: "2.0",
-      id,
-      result: {
-        protocolVersion: PROTOCOL_VERSION,
-        serverInfo: { name: "smithers-ci-cloud-mcp", version: "1.0.0-rc.20" },
-        capabilities: { tools: { listChanged: false } },
-        instructions:
-          "Smithers CI public Cloud MCP server. Public reads work anonymously. Writes require an authenticated bearer lease exchanged from a single-use smo_ token or OAuth 2.1 PKCE S256 grant. Person-only actions are never callable via MCP."
-      }
-    })
-  }
-
-  if (method === "tools/list") {
-    return jsonResponse({
-      jsonrpc: "2.0",
-      id,
-      result: {
-        tools: FACTORY_SNAPSHOT.mcpTools.map(({ name, description, inputSchema }) => ({
-          name,
-          description,
-          inputSchema
-        }))
-      }
-    })
-  }
-
-  if (method === "tools/call") {
-    const params = payload.params ?? {}
-    const name = typeof params.name === "string" ? params.name : ""
-    const args = (params.arguments && typeof params.arguments === "object"
-      ? params.arguments
-      : {}) as Record<string, unknown>
-
-    if (PERSON_ONLY.has(name)) {
-      return jsonResponse({
-        jsonrpc: "2.0",
-        id,
-        error: { code: -32003, message: `Action ${name} is person_only and cannot be executed via MCP` }
-      })
-    }
-
-    const def = FACTORY_SNAPSHOT.mcpTools.find((t) => t.name === name)
-    if (!def) {
-      return jsonResponse({
-        jsonrpc: "2.0",
-        id,
-        error: { code: -32601, message: `Unknown MCP tool: ${name}` }
-      })
-    }
-
-    if (def.requiredScope !== null) {
-      const auth = request.headers.get("authorization") ?? ""
-      if (!auth.startsWith("Bearer sms_")) {
-        return jsonResponse({
-          jsonrpc: "2.0",
-          id,
-          error: {
-            code: -32002,
-            message: `Tool ${name} requires authenticated scope ${def.requiredScope}. Exchange a one-time smo_ token at ${origin}/smithersai/smithers-ci/mcp/exchange.`
-          }
-        })
-      }
-    }
-
-    let output: unknown
-    switch (name) {
-      case "audit_run":
-        output = { report: FACTORY_SNAPSHOT.trustedAudit }
-        break
-      case "artifacts_list":
-        output = {
-          artifacts:
-            args.trustedOnly === true
-              ? FACTORY_SNAPSHOT.artifacts.filter((a) => a.trusted)
-              : FACTORY_SNAPSHOT.artifacts
-        }
-        break
-      case "cache_stats":
-        output = { stats: FACTORY_SNAPSHOT.storeStats }
-        break
-      case "todos_list":
-        output = { todos: FACTORY_SNAPSHOT.todos }
-        break
-      case "issues_list":
-        output = { issues: FACTORY_SNAPSHOT.issues }
-        break
-      case "issue_get": {
-        const num = Number(args.number)
-        const issue = FACTORY_SNAPSHOT.issues.find((i) => i.number === num)
-        if (!issue) {
-          return jsonResponse({ jsonrpc: "2.0", id, error: { code: -32000, message: `Issue #${num} not found` } })
-        }
-        output = { issue }
-        break
-      }
-      case "pulls_list":
-        output = { pulls: FACTORY_SNAPSHOT.pulls }
-        break
-      case "changesets_stack_list":
-        output = { changesets: FACTORY_SNAPSHOT.changesets }
-        break
-      case "wiki_search": {
-        const q = typeof args.query === "string" ? args.query.trim().toLowerCase() : ""
-        const pages = FACTORY_SNAPSHOT.wiki.pages.filter(
-          (p) => !q || p.title.toLowerCase().includes(q) || p.summary.toLowerCase().includes(q) || p.markdown.toLowerCase().includes(q)
-        )
-        output = { pages: pages.map(({ slug, title, summary, linksOut, backlinks }) => ({ slug, title, summary, linksOut, backlinks })) }
-        break
-      }
-      case "wiki_read": {
-        const slug = String(args.slug ?? "").trim().toLowerCase()
-        const page = FACTORY_SNAPSHOT.wiki.pages.find((p) => p.slug === slug)
-        if (!page) {
-          return jsonResponse({ jsonrpc: "2.0", id, error: { code: -32000, message: `Wiki page not found: ${slug}` } })
-        }
-        output = { page }
-        break
-      }
-      case "mythical_history_outline":
-        output = { snapshot: FACTORY_SNAPSHOT.history, manifest: FACTORY_SNAPSHOT.historyManifest }
-        break
-      case "trust_policy_explain":
-        output = {
-          personOnlyActions: FACTORY_SNAPSHOT.personOnlyActions,
-          rootInputTracing: FACTORY_SNAPSHOT.rootInputTracing
-        }
-        break
-      default:
-        output = { ok: true, tool: name, note: "Handled against Smithers Cloud repository state" }
-        break
-    }
-
-    return jsonResponse({
-      jsonrpc: "2.0",
-      id,
-      result: {
-        content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
-        structuredContent: output
-      }
-    })
-  }
-
-  return jsonResponse({
-    jsonrpc: "2.0",
-    id,
-    error: { code: -32601, message: `Unsupported MCP method: ${method}` }
-  })
+  return fallbackHub
 }
 
 export default {
@@ -198,7 +48,8 @@ export default {
         service: "smithers-ci-factory",
         repository: FACTORY_SNAPSHOT.repository,
         lighthouseScore: FACTORY_SNAPSHOT.trustedAudit.overallScore,
-        objectStore: FACTORY_SNAPSHOT.objectStoreEndpoint
+        objectStore: FACTORY_SNAPSHOT.objectStoreEndpoint,
+        durableObject: Boolean(env.FACTORY_HUB)
       })
     }
 
@@ -236,13 +87,6 @@ export default {
       })
     }
 
-    if (
-      request.method === "POST" &&
-      (url.pathname === "/mcp" || url.pathname === "/smithersai/smithers-ci/mcp")
-    ) {
-      return handleMcpRpc(request, origin)
-    }
-
     if (request.method === "GET" && url.pathname === "/api/audit.json") {
       return jsonResponse(FACTORY_SNAPSHOT.trustedAudit)
     }
@@ -251,12 +95,42 @@ export default {
       return jsonResponse(FACTORY_SNAPSHOT.untrustedAudit)
     }
 
+    // Stateful Durable Object routes: MCP, one-time token mint & exchange, live factory state, waitlist
+    if (
+      url.pathname === "/mcp" ||
+      url.pathname === "/smithersai/smithers-ci/mcp" ||
+      url.pathname === "/smithersai/smithers-ci/mcp/exchange" ||
+      url.pathname === "/smithersai/smithers-ci/mcp/mint" ||
+      url.pathname === "/api/factory" ||
+      url.pathname === "/api/waitlist"
+    ) {
+      // Strip any untrusted caller-spoofed control plane header; only set it if valid bearer control secret matches.
+      const forwardedHeaders = new Headers(request.headers)
+      forwardedHeaders.delete("x-smithers-control-plane")
+      const controlAuth = request.headers.get("x-smithers-control-secret") ?? ""
+      if (
+        env.SMITHERS_CONTROL_SECRET &&
+        env.SMITHERS_CONTROL_SECRET.length >= 16 &&
+        controlAuth === env.SMITHERS_CONTROL_SECRET
+      ) {
+        forwardedHeaders.set("x-smithers-control-plane", "verified")
+      }
+      const bodyBytes =
+        request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer()
+      const forwarded = new Request(request.url, {
+        method: request.method,
+        headers: forwardedHeaders,
+        body: bodyBytes
+      })
+      return getHub(env).fetch(forwarded)
+    }
+
     if (env.ASSETS) {
       const assetRes = await env.ASSETS.fetch(request)
       if (assetRes.status !== 404) {
         return assetRes
       }
-      // SPA fallback fetches "/" (never "/index.html") to avoid 307 redirects on deep links.
+      // SPA fallback fetches "/" (never "/index.html") to prevent 307 redirects on deep links.
       return env.ASSETS.fetch(new Request(new URL("/", url.origin), request))
     }
 

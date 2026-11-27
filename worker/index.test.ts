@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
+import { webPkceS256 } from "./FactoryHubDO.ts"
 import worker from "./index.ts"
 
-describe("Cloudflare Worker (Factory UI + Cloud MCP)", () => {
+describe("Cloudflare Worker + FactoryHubDO (Factory UI + Live Cloud MCP + One-Time Auth)", () => {
   it("serves health, OAuth 2.1 discovery, public MCP tools, and blocks person-only actions", async () => {
     const health = await worker.fetch(new Request("https://smithers.sh/api/health"), {})
     expect(health.status).toBe(200)
@@ -44,6 +45,89 @@ describe("Cloudflare Worker (Factory UI + Cloud MCP)", () => {
     )
     const mergeJson = (await mergeRes.json()) as { error: { code: number } }
     expect(mergeJson.error.code).toBe(-32003)
+  })
+
+  it("mints single-use smo_ token, strips spoofed headers, burns on first PKCE exchange, and persists live MCP writes", async () => {
+    const verifier = "worker-pkce-verifier-0123456789abcdef"
+    const challenge = await webPkceS256(verifier)
+
+    // Public caller attempting to spoof x-smithers-control-plane header gets downgraded to untrusted:community
+    const mintRes = await worker.fetch(
+      new Request("https://smithers.sh/smithersai/smithers-ci/mcp/mint", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-smithers-control-plane": "verified"
+        },
+        body: JSON.stringify({
+          subject: "agent:spoof-attempt",
+          trustTier: "trusted:sandbox",
+          scopes: ["mcp:read", "cache:write", "todo:draft", "artifact:write:untrusted", "pr/merge"],
+          pkceChallenge: challenge
+        })
+      }),
+      {}
+    )
+    expect(mintRes.status).toBe(201)
+    const minted = (await mintRes.json()) as {
+      token: string
+      trustTier: string
+      scopes: string[]
+      strippedScopes: string[]
+    }
+    expect(minted.trustTier).toBe("untrusted:community")
+    expect(minted.strippedScopes).toContain("cache:write")
+    expect(minted.strippedScopes).toContain("pr/merge")
+
+    // Redeem with correct PKCE verifier
+    const exch1 = await worker.fetch(
+      new Request("https://smithers.sh/smithersai/smithers-ci/mcp/exchange", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: minted.token, pkceVerifier: verifier })
+      }),
+      {}
+    )
+    expect(exch1.status).toBe(200)
+    const lease = (await exch1.json()) as { leaseToken: string; trustTier: string }
+    expect(lease.leaseToken).toMatch(/^sms_[0-9a-f]{64}$/)
+
+    // Second exchange MUST fail (single-use burn!)
+    const exch2 = await worker.fetch(
+      new Request("https://smithers.sh/smithersai/smithers-ci/mcp/exchange", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: minted.token, pkceVerifier: verifier })
+      }),
+      {}
+    )
+    expect(exch2.status).toBe(401)
+    const replayErr = (await exch2.json()) as { code: string }
+    expect(replayErr.code).toBe("already_redeemed")
+
+    // Use live lease to draft TODO & upload untrusted artifact
+    const draftRes = await worker.fetch(
+      new Request("https://smithers.sh/smithersai/smithers-ci/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${lease.leaseToken}`
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 9,
+          method: "tools/call",
+          params: {
+            name: "todo_draft",
+            arguments: { title: "Live DO drafted TODO", body: "Persisted via Worker DO" }
+          }
+        })
+      }),
+      {}
+    )
+    expect(draftRes.status).toBe(200)
+    const draftJson = (await draftRes.json()) as { result: { structuredContent: { todo: { title: string } } } }
+    expect(draftJson.result.structuredContent.todo.title).toBe("Live DO drafted TODO")
   })
 
   it("falls back SPA deep links to '/' instead of '/index.html' to avoid 307 redirects", async () => {
