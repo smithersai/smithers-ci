@@ -90,16 +90,15 @@ jobs:
           name: smithers-ci-trusted-bundle-${{ github.sha }}
 
       - name: Deploy Factory UI, Wiki, and Cloud MCP Worker
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          npx --yes wrangler@4 deploy
-
-      - name: Record pending Cloudflare token notice
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
-        run: echo "CLOUDFLARE_API_TOKEN secret not configured on this mirror yet. Built dist/ui bundle verified and archived."
+          if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            npx --yes wrangler@4 deploy
+          else
+            echo "CLOUDFLARE_API_TOKEN secret not configured on this mirror yet. Built dist/ui bundle verified and archived."
+          fi
 
   publish-release:
     name: Publish npm Package & GitHub Release
@@ -124,10 +123,14 @@ jobs:
           name: smithers-ci-trusted-bundle-${{ github.sha }}
 
       - name: Publish to npm with provenance
-        if: ${{ secrets.NPM_TOKEN != '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public --tag next --provenance
+        run: |
+          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+            npm publish --access public --tag next --provenance
+          else
+            echo "NPM_TOKEN not configured on this mirror yet. Skipping npm publish."
+          fi
 
       - name: Create GitHub Release with Lighthouse Audit attached
         env:
