@@ -6,6 +6,7 @@ compatibility_date = "2026-11-01"
 directory = "./dist/ui"
 binding = "ASSETS"
 not_found_handling = "none"
+run_worker_first = ["/", "/llms.txt", "/wiki/*", "/api/*", "/mcp", "/smithersai/*", "/.well-known/*"]
 
 [durable_objects]
 bindings = [

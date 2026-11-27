@@ -140,7 +140,9 @@ export default {
     const url = new URL(request.url)
     const origin = (env.SMITHERS_BASE_URL ?? url.origin).replace(/\/+$/, "")
 
-    if (request.method === "GET" && url.pathname === "/api/health") {
+    const isGetOrHead = request.method === "GET" || request.method === "HEAD"
+
+    if (isGetOrHead && url.pathname === "/api/health") {
       return jsonResponse({
         ok: true,
         service: "smithers-ci-factory",
@@ -151,8 +153,9 @@ export default {
       })
     }
 
-    if (request.method === "GET" && url.pathname === "/llms.txt") {
-      return new Response(renderLlmsTxt(origin), {
+    if (isGetOrHead && url.pathname === "/llms.txt") {
+      const body = request.method === "HEAD" ? null : renderLlmsTxt(origin)
+      return new Response(body, {
         status: 200,
         headers: {
           "content-type": "text/plain; charset=utf-8",
@@ -164,12 +167,12 @@ export default {
     }
 
     const wikiMatch = /^\/wiki\/([a-z0-9-]+)\.md$/i.exec(url.pathname)
-    if (request.method === "GET" && wikiMatch) {
+    if (isGetOrHead && wikiMatch) {
       const md = renderWikiMarkdown(wikiMatch[1]!.toLowerCase(), origin)
       if (!md) {
         return new Response("Not Found\n", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } })
       }
-      return new Response(md, {
+      return new Response(request.method === "HEAD" ? null : md, {
         status: 200,
         headers: {
           "content-type": "text/markdown; charset=utf-8",
