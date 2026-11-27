@@ -70,9 +70,12 @@ const UNTRUSTED_SCOPES = new Set<string>([
   "audit:run"
 ])
 
-const PKCE_CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/
+const PKCE_CHALLENGE_RE = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/
 const PKCE_VERIFIER_RE = /^[A-Za-z0-9._~-]{43,128}$/
-const MAX_DO_ARTIFACT_BYTES = 64 * 1024 // 64 KiB cap in DO SQLite
+const MAX_DO_ARTIFACT_BYTES = 64 * 1024 // 64 KiB cap per artifact in DO SQLite
+const MAX_DO_UNTRUSTED_ARTIFACTS = 50
+const MAX_DO_UNTRUSTED_TOTAL_BYTES = 512 * 1024 // 512 KiB cumulative cap for untrusted blobs
+const MAX_DO_HYDRATE_ROWS = 200
 const MAX_TEXT_FIELD = 4000
 const MAX_TITLE_FIELD = 200
 
@@ -251,7 +254,7 @@ export class FactoryHubDO {
     `)
 
     // Hydrate or seed durable collections so hibernation loses zero state.
-    const todoRows = this.sql.exec(`SELECT data_json FROM factory_todos ORDER BY seq DESC`).toArray()
+    const todoRows = this.sql.exec(`SELECT data_json FROM factory_todos ORDER BY seq DESC LIMIT ?`, MAX_DO_HYDRATE_ROWS).toArray()
     if (todoRows.length === 0) {
       let seq = 1
       for (const item of [...FACTORY_SNAPSHOT.todos].reverse()) {
@@ -266,7 +269,7 @@ export class FactoryHubDO {
       this.todos = todoRows.map((r) => JSON.parse(String(r.data_json)))
     }
 
-    const issueRows = this.sql.exec(`SELECT data_json FROM factory_issues ORDER BY number DESC`).toArray()
+    const issueRows = this.sql.exec(`SELECT data_json FROM factory_issues ORDER BY number DESC LIMIT ?`, MAX_DO_HYDRATE_ROWS).toArray()
     if (issueRows.length === 0) {
       for (const item of FACTORY_SNAPSHOT.issues) {
         this.sql.exec(
@@ -279,7 +282,7 @@ export class FactoryHubDO {
       this.issues = issueRows.map((r) => JSON.parse(String(r.data_json)))
     }
 
-    const csRows = this.sql.exec(`SELECT data_json FROM factory_changesets ORDER BY stack_position ASC`).toArray()
+    const csRows = this.sql.exec(`SELECT data_json FROM factory_changesets ORDER BY stack_position ASC LIMIT ?`, MAX_DO_HYDRATE_ROWS).toArray()
     if (csRows.length === 0) {
       for (const item of FACTORY_SNAPSHOT.changesets) {
         this.sql.exec(
@@ -293,7 +296,7 @@ export class FactoryHubDO {
       this.changesets = csRows.map((r) => JSON.parse(String(r.data_json)))
     }
 
-    const pullRows = this.sql.exec(`SELECT data_json FROM factory_pulls ORDER BY number DESC`).toArray()
+    const pullRows = this.sql.exec(`SELECT data_json FROM factory_pulls ORDER BY number DESC LIMIT ?`, MAX_DO_HYDRATE_ROWS).toArray()
     if (pullRows.length === 0) {
       for (const item of FACTORY_SNAPSHOT.pulls) {
         this.sql.exec(
@@ -306,7 +309,8 @@ export class FactoryHubDO {
       this.pulls = pullRows.map((r) => JSON.parse(String(r.data_json)))
     }
 
-    const artRows = this.sql.exec(`SELECT key, meta_json, content FROM factory_artifacts ORDER BY created_at DESC`).toArray()
+    // Hydrate metadata only (never load artifact payload bodies into DO RAM on startup).
+    const artRows = this.sql.exec(`SELECT key, meta_json FROM factory_artifacts ORDER BY created_at DESC LIMIT ?`, MAX_DO_HYDRATE_ROWS).toArray()
     if (artRows.length === 0) {
       for (const item of FACTORY_SNAPSHOT.artifacts) {
         this.sql.exec(
@@ -319,16 +323,12 @@ export class FactoryHubDO {
       }
     } else {
       this.artifacts = artRows.map((r) => JSON.parse(String(r.meta_json)))
-      for (const r of artRows) {
-        if (typeof r.content === "string") {
-          this.artifactBlobs.set(String(r.key), r.content)
-        }
-      }
     }
   }
 
   private pruneExpired(): void {
     const nowIso = new Date().toISOString()
+    const expiredTokenCutoff = new Date(Date.now() - 3_600_000).toISOString()
     const nowMs = Date.now()
     for (const [digest, lease] of this.leases.entries()) {
       if (lease.revokedAt !== null || nowMs >= Date.parse(lease.expiresAt)) {
@@ -342,6 +342,7 @@ export class FactoryHubDO {
     }
     if (this.sql) {
       this.sql.exec(`DELETE FROM session_leases WHERE expires_at <= ? OR revoked_at IS NOT NULL`, nowIso)
+      this.sql.exec(`DELETE FROM one_time_tokens WHERE expires_at <= ?`, expiredTokenCutoff)
     }
   }
 
@@ -953,7 +954,30 @@ export class FactoryHubDO {
             createdAt: new Date().toISOString()
           }
           this.artifacts = [meta, ...this.artifacts.filter((a) => a.key !== meta.key)]
-          this.artifactBlobs.set(meta.key, content)
+          if (!canWriteTrusted) {
+            // Enforce strict cumulative count & byte cap on untrusted community artifacts in DO SQLite.
+            const untrusted = this.artifacts.filter((a) => !a.trusted)
+            let runningBytes = 0
+            const evictKeys: string[] = []
+            for (let idx = 0; idx < untrusted.length; idx++) {
+              const item = untrusted[idx]!
+              if (idx >= MAX_DO_UNTRUSTED_ARTIFACTS || runningBytes + item.bytes > MAX_DO_UNTRUSTED_TOTAL_BYTES) {
+                evictKeys.push(item.key)
+              } else {
+                runningBytes += item.bytes
+              }
+            }
+            if (evictKeys.length > 0) {
+              const evictSet = new Set(evictKeys)
+              this.artifacts = this.artifacts.filter((a) => !evictSet.has(a.key))
+              for (const k of evictKeys) {
+                this.artifactBlobs.delete(k)
+                if (this.sql) {
+                  this.sql.exec(`DELETE FROM factory_artifacts WHERE key = ?`, k)
+                }
+              }
+            }
+          }
           if (this.sql) {
             this.sql.exec(
               `INSERT OR REPLACE INTO factory_artifacts (key, created_at, meta_json, content) VALUES (?, ?, ?, ?)`,
@@ -962,6 +986,8 @@ export class FactoryHubDO {
               JSON.stringify(meta),
               content
             )
+          } else {
+            this.artifactBlobs.set(meta.key, content)
           }
           output = { artifact: meta }
           break

@@ -69,16 +69,17 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
   }
 
   if (cmd === "replay") {
-    const requestedTier = (parseFlag(argv, "--trust") ?? "trusted:sandbox") as TrustTier
+    const envSecret = (process.env.SMITHERS_CONTROL_SECRET ?? "").trim()
+    const hasControlSecret = envSecret.length >= 16
+    const requestedTier = (parseFlag(argv, "--trust") ?? (hasControlSecret ? "trusted:sandbox" : "untrusted:community")) as TrustTier
     const rawSha = (process.env.SMITHERS_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "").trim()
     const commitSha = /^[0-9a-f]{40}$/i.test(rawSha) ? rawSha.toLowerCase() : DEFAULT_SHA
-    const envSecret = (process.env.SMITHERS_CONTROL_SECRET ?? "").trim()
-    const secret = envSecret.length >= 16 ? envSecret : randomBytes(24).toString("hex")
     const now = new Date()
     const issuedAt = now.toISOString()
     const expiresAt = new Date(now.getTime() + 600_000).toISOString()
+    // Never self-attest trusted cache writes without a real control-plane signing secret.
     const claim =
-      requestedTier === "untrusted:community"
+      !hasControlSecret || requestedTier === "untrusted:community"
         ? {
             tier: "untrusted:community" as const,
             callerKind: "person" as const,
@@ -99,9 +100,9 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
               issuedAt,
               expiresAt
             },
-            secret
+            envSecret
           )
-    const verified = verifyExecutionTrust(claim, { signingSecret: secret })
+    const verified = verifyExecutionTrust(claim, { signingSecret: hasControlSecret ? envSecret : undefined })
     const store = new SharedObjectStore({ rootDir: join(repoRoot, ".smithers", "object-store") })
     const report = runIncrementalReplay({ repoRoot, store, execution: verified })
     if (argv.includes("--json")) {

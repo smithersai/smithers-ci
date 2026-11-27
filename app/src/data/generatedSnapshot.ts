@@ -34,7 +34,7 @@ export interface FactorySnapshot {
 }
 
 export const FACTORY_SNAPSHOT: FactorySnapshot = {
-  "generatedAt": "2026-11-27T13:14:34.291Z",
+  "generatedAt": "2026-11-27T13:19:01.800Z",
   "repository": "smithersai/smithers-ci",
   "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
   "cloudUrl": "https://smithers.sh/smithersai/smithers-ci",
@@ -44,7 +44,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "objectStoreEndpoint": "https://build.smithers.sh",
   "trustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-27T13:14:34.305Z",
+    "generatedAt": "2026-11-27T13:19:01.805Z",
     "repository": "smithersai/smithers-ci",
     "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
     "execution": {
@@ -58,8 +58,8 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": true,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-27T13:14:34.294Z",
-      "expiresAt": "2026-11-27T13:24:34.291Z"
+      "verifiedAt": "2026-11-27T13:19:01.801Z",
+      "expiresAt": "2026-11-27T13:29:01.800Z"
     },
     "policy": {
       "allowExecution": true,
@@ -88,7 +88,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "satisfied": true,
       "trustTier": "trusted:sandbox",
       "actor": "cfbox-gate-04",
-      "verifiedAt": "2026-11-27T13:14:34.294Z"
+      "verifiedAt": "2026-11-27T13:19:01.801Z"
     },
     "overallScore": 100,
     "overallRating": "pass",
@@ -562,7 +562,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   },
   "untrustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-27T13:14:34.310Z",
+    "generatedAt": "2026-11-27T13:19:01.806Z",
     "repository": "smithersai/smithers-ci",
     "commitSha": "572c6e21abcd1234567890abcdef1234567890ef",
     "execution": {
@@ -576,7 +576,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": false,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-27T13:14:34.295Z"
+      "verifiedAt": "2026-11-27T13:19:01.801Z"
     },
     "policy": {
       "allowExecution": true,
@@ -605,7 +605,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "satisfied": false,
       "trustTier": "untrusted:community",
       "actor": "alice-dev",
-      "verifiedAt": "2026-11-27T13:14:34.295Z"
+      "verifiedAt": "2026-11-27T13:19:01.801Z"
     },
     "overallScore": 100,
     "overallRating": "pass",
@@ -1080,19 +1080,19 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "storeStats": {
     "endpoint": "https://build.smithers.sh",
     "localRoot": "/Users/williamcory/smithers-ci/.smithers/object-store",
-    "casObjects": 47,
-    "untrustedCasObjects": 5,
+    "casObjects": 51,
+    "untrustedCasObjects": 6,
     "actionCacheEntries": 9,
     "trustedArtifacts": 2,
     "untrustedArtifacts": 3,
-    "totalBytes": 1146841
+    "totalBytes": 1292192
   },
   "artifacts": [
     {
       "name": "community-preview-audit.json",
       "namespace": "untrusted/alice-dev/572c6e21abcd1234567890abcdef1234567890ef",
       "key": "untrusted/alice-dev/572c6e21abcd1234567890abcdef1234567890ef/community-preview-audit.json",
-      "sha256": "8e8212eeef1cc527a4a0c9c32939eb39be6fcc0326150c4789c6e7973a977de1",
+      "sha256": "47013a1520b4c7ee8112527603de12c4783f8bc55d8912f324e72ef252b341ea",
       "bytes": 19548,
       "contentType": "application/json",
       "visibility": "public",
@@ -1100,13 +1100,13 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": false,
       "actor": "alice-dev",
       "commitSha": "572c6e21abcd1234567890abcdef1234567890ef",
-      "createdAt": "2026-11-27T13:14:34.319Z"
+      "createdAt": "2026-11-27T13:19:01.808Z"
     },
     {
       "name": "lighthouse-audit.html",
       "namespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
       "key": "trusted/46412bca49c3a0f1234567890abcdef123456789/lighthouse-audit.html",
-      "sha256": "932d6511a86e8ad17f0d194ba4027566d2c2deb695180542c825cb193fdec7f6",
+      "sha256": "9abdcc93a7b4d3545ca1183342b58c3ec29756f696bb693d114a9885fa56244f",
       "bytes": 43422,
       "contentType": "text/html; charset=utf-8",
       "visibility": "public",
@@ -1114,13 +1114,13 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": true,
       "actor": "cfbox-gate-04",
       "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
-      "createdAt": "2026-11-27T13:14:34.316Z"
+      "createdAt": "2026-11-27T13:19:01.808Z"
     },
     {
       "name": "lighthouse-audit.json",
       "namespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
       "key": "trusted/46412bca49c3a0f1234567890abcdef123456789/lighthouse-audit.json",
-      "sha256": "8720c8495ea0ba302b81467a9978adf36278881053ff0afb7aa99fac235f57b7",
+      "sha256": "ca011f7e26e5d840facbd52966a641f643d25f4c28f038d63d2819166041bc54",
       "bytes": 19461,
       "contentType": "application/json",
       "visibility": "public",
@@ -1128,7 +1128,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": true,
       "actor": "cfbox-gate-04",
       "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
-      "createdAt": "2026-11-27T13:14:34.312Z"
+      "createdAt": "2026-11-27T13:19:01.807Z"
     },
     {
       "name": "lighthouse-audit.html",

@@ -65,7 +65,7 @@ const UNTRUSTED_ALLOWED_SCOPES = new Set<TokenScope>([
   "audit:run"
 ])
 
-export const PKCE_CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/
+export const PKCE_CHALLENGE_RE = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/
 export const PKCE_VERIFIER_RE = /^[A-Za-z0-9._~-]{43,128}$/
 
 export interface MintRequest {

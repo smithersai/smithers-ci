@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { existsSync, readFileSync, readdirSync } from "node:fs"
+import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
 
 export interface WikiPage {
@@ -58,7 +58,15 @@ export function loadWikiGraph(wikiDir: string): WikiGraph {
   }
 
   const files = readdirSync(dir)
-    .filter((f) => f.endsWith(".md"))
+    .filter((f) => {
+      if (!f.endsWith(".md")) return false
+      try {
+        const st = lstatSync(join(dir, f))
+        return !st.isSymbolicLink() && st.isFile()
+      } catch {
+        return false
+      }
+    })
     .sort()
 
   const draftPages = files.map((file) => {

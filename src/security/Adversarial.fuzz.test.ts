@@ -190,7 +190,18 @@ function createMockDurableSqlStorage() {
         }
         return { toArray: () => [], rowsWritten: 1 }
       }
-      if (q.startsWith("SELECT key, meta_json, content FROM factory_artifacts")) {
+      if (q.startsWith("DELETE FROM one_time_tokens")) {
+        const cutoff = String(b[0])
+        for (const [k, row] of tables.one_time_tokens.entries()) {
+          if (String(row.expires_at) <= cutoff) tables.one_time_tokens.delete(k)
+        }
+        return { toArray: () => [], rowsWritten: 0 }
+      }
+      if (q.startsWith("DELETE FROM factory_artifacts WHERE key = ?")) {
+        tables.factory_artifacts.delete(String(b[0]))
+        return { toArray: () => [], rowsWritten: 1 }
+      }
+      if (q.startsWith("SELECT key, meta_json FROM factory_artifacts")) {
         const rows = Array.from(tables.factory_artifacts.values()).sort((a, c) =>
           String(c.created_at).localeCompare(String(a.created_at))
         )
