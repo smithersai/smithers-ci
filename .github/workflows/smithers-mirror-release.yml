@@ -70,6 +70,7 @@ jobs:
             .smithers/reports/lighthouse-audit.json
             .smithers/reports/lighthouse-audit.html
             dist/ui/
+            dist/npm/*.tgz
             wiki/llms.txt
             history/manifest.json
 
@@ -127,7 +128,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
-            npm publish --access public --tag next --provenance
+            candidate="dist/npm/$(node -p 'const p=require("./package.json"); p.name + "-" + p.version').tgz"
+            npm publish "$candidate" --access public --tag next --provenance
           else
             echo "NPM_TOKEN not configured on this mirror yet. Skipping npm publish."
           fi
