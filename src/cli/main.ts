@@ -9,6 +9,7 @@ import {
   formatBootstrapEnvelope,
   writeTokenFile
 } from "../auth/OneTimeToken.ts"
+import { formatReplayReport, runIncrementalReplay } from "../ci/ReplayEngine.ts"
 import { inventoryGithubWorkflows } from "../ci/WorkflowInventory.ts"
 import { validateHomeJson } from "../factory/Audience.ts"
 import { FactoryState } from "../factory/FactoryState.ts"
@@ -54,6 +55,7 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
         "",
         "Commands:",
         "  smithers-ci audit [--trust <tier>] [--out <dir>]     Run Lighthouse backpressure audit",
+        "  smithers-ci replay [--trust <tier>] [--json]         Run content-addressed incremental replay against shared cache",
         "  smithers-ci inventory [--json]                       Inventory GitHub workflows and audit PR secret isolation",
         "  smithers-ci auth mint --subject <id> [--tier <tier>] [--scopes <csv>] [--out <file>]",
         "  smithers-ci wiki check                               Verify Obsidian wiki links and diagrams",
@@ -64,6 +66,50 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
       ].join("\n")
     )
     return 0
+  }
+
+  if (cmd === "replay") {
+    const requestedTier = (parseFlag(argv, "--trust") ?? "trusted:sandbox") as TrustTier
+    const rawSha = (process.env.SMITHERS_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "").trim()
+    const commitSha = /^[0-9a-f]{40}$/i.test(rawSha) ? rawSha.toLowerCase() : DEFAULT_SHA
+    const envSecret = (process.env.SMITHERS_CONTROL_SECRET ?? "").trim()
+    const secret = envSecret.length >= 16 ? envSecret : randomBytes(24).toString("hex")
+    const now = new Date()
+    const issuedAt = now.toISOString()
+    const expiresAt = new Date(now.getTime() + 600_000).toISOString()
+    const claim =
+      requestedTier === "untrusted:community"
+        ? {
+            tier: "untrusted:community" as const,
+            callerKind: "person" as const,
+            actor: process.env.USER ?? "community-user",
+            repository: "smithersai/smithers-ci",
+            commitSha,
+            issuedAt,
+            expiresAt
+          }
+        : signExecutionClaim(
+            {
+              tier: requestedTier,
+              callerKind: requestedTier === "trusted:maintainer" ? "person" : "sandbox",
+              actor: requestedTier === "trusted:maintainer" ? "roninjin10" : "cfbox-local",
+              repository: "smithersai/smithers-ci",
+              commitSha,
+              sandboxId: requestedTier === "trusted:sandbox" ? "cfbox-local-01" : null,
+              issuedAt,
+              expiresAt
+            },
+            secret
+          )
+    const verified = verifyExecutionTrust(claim, { signingSecret: secret })
+    const store = new SharedObjectStore({ rootDir: join(repoRoot, ".smithers", "object-store") })
+    const report = runIncrementalReplay({ repoRoot, store, execution: verified })
+    if (argv.includes("--json")) {
+      console.log(JSON.stringify(report, null, 2))
+    } else {
+      console.log(formatReplayReport(report))
+    }
+    return report.mismatches === 0 ? 0 : 1
   }
 
   if (cmd === "inventory") {

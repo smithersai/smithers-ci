@@ -34,7 +34,7 @@ export interface FactorySnapshot {
 }
 
 export const FACTORY_SNAPSHOT: FactorySnapshot = {
-  "generatedAt": "2026-11-27T08:50:50.339Z",
+  "generatedAt": "2026-11-27T13:14:34.291Z",
   "repository": "smithersai/smithers-ci",
   "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
   "cloudUrl": "https://smithers.sh/smithersai/smithers-ci",
@@ -44,7 +44,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "objectStoreEndpoint": "https://build.smithers.sh",
   "trustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-27T08:50:50.344Z",
+    "generatedAt": "2026-11-27T13:14:34.305Z",
     "repository": "smithersai/smithers-ci",
     "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
     "execution": {
@@ -58,8 +58,8 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": true,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-27T08:50:50.340Z",
-      "expiresAt": "2026-11-27T09:00:50.339Z"
+      "verifiedAt": "2026-11-27T13:14:34.294Z",
+      "expiresAt": "2026-11-27T13:24:34.291Z"
     },
     "policy": {
       "allowExecution": true,
@@ -88,7 +88,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "satisfied": true,
       "trustTier": "trusted:sandbox",
       "actor": "cfbox-gate-04",
-      "verifiedAt": "2026-11-27T08:50:50.340Z"
+      "verifiedAt": "2026-11-27T13:14:34.294Z"
     },
     "overallScore": 100,
     "overallRating": "pass",
@@ -126,11 +126,11 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "status": "pass",
             "score": 100,
             "weight": 4,
-            "displayValue": "35/35 passed",
-            "durationMs": 740,
+            "displayValue": "36/36 passed",
+            "durationMs": 760,
             "evidence": [
               "Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP",
-              "Observed 35 passing and 0 failing tests"
+              "Observed 36 passing and 0 failing tests"
             ]
           },
           {
@@ -562,7 +562,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   },
   "untrustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-27T08:50:50.345Z",
+    "generatedAt": "2026-11-27T13:14:34.310Z",
     "repository": "smithersai/smithers-ci",
     "commitSha": "572c6e21abcd1234567890abcdef1234567890ef",
     "execution": {
@@ -576,7 +576,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": false,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-27T08:50:50.341Z"
+      "verifiedAt": "2026-11-27T13:14:34.295Z"
     },
     "policy": {
       "allowExecution": true,
@@ -605,7 +605,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "satisfied": false,
       "trustTier": "untrusted:community",
       "actor": "alice-dev",
-      "verifiedAt": "2026-11-27T08:50:50.341Z"
+      "verifiedAt": "2026-11-27T13:14:34.295Z"
     },
     "overallScore": 100,
     "overallRating": "pass",
@@ -643,11 +643,11 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "status": "pass",
             "score": 100,
             "weight": 4,
-            "displayValue": "35/35 passed",
-            "durationMs": 790,
+            "displayValue": "36/36 passed",
+            "durationMs": 810,
             "evidence": [
               "Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP",
-              "Observed 35 passing and 0 failing tests"
+              "Observed 36 passing and 0 failing tests"
             ]
           },
           {
@@ -1080,19 +1080,19 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "storeStats": {
     "endpoint": "https://build.smithers.sh",
     "localRoot": "/Users/williamcory/smithers-ci/.smithers/object-store",
-    "casObjects": 34,
-    "untrustedCasObjects": 4,
-    "actionCacheEntries": 0,
+    "casObjects": 47,
+    "untrustedCasObjects": 5,
+    "actionCacheEntries": 9,
     "trustedArtifacts": 2,
     "untrustedArtifacts": 3,
-    "totalBytes": 999467
+    "totalBytes": 1146841
   },
   "artifacts": [
     {
       "name": "community-preview-audit.json",
       "namespace": "untrusted/alice-dev/572c6e21abcd1234567890abcdef1234567890ef",
       "key": "untrusted/alice-dev/572c6e21abcd1234567890abcdef1234567890ef/community-preview-audit.json",
-      "sha256": "8b473a03c63369922682e66fba931d518a4715720c487a7e7e32e8e276fc0ee3",
+      "sha256": "8e8212eeef1cc527a4a0c9c32939eb39be6fcc0326150c4789c6e7973a977de1",
       "bytes": 19548,
       "contentType": "application/json",
       "visibility": "public",
@@ -1100,27 +1100,27 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": false,
       "actor": "alice-dev",
       "commitSha": "572c6e21abcd1234567890abcdef1234567890ef",
-      "createdAt": "2026-11-27T08:50:50.349Z"
+      "createdAt": "2026-11-27T13:14:34.319Z"
     },
     {
       "name": "lighthouse-audit.html",
       "namespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
       "key": "trusted/46412bca49c3a0f1234567890abcdef123456789/lighthouse-audit.html",
-      "sha256": "0ca216a6ed1bfc7c7c189e7f5031d24b9a9b73eda99f9bc514661d4e865e7fdd",
-      "bytes": 37757,
+      "sha256": "932d6511a86e8ad17f0d194ba4027566d2c2deb695180542c825cb193fdec7f6",
+      "bytes": 43422,
       "contentType": "text/html; charset=utf-8",
       "visibility": "public",
       "trustTier": "trusted:sandbox",
       "trusted": true,
       "actor": "cfbox-gate-04",
       "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
-      "createdAt": "2026-11-27T08:50:50.347Z"
+      "createdAt": "2026-11-27T13:14:34.316Z"
     },
     {
       "name": "lighthouse-audit.json",
       "namespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
       "key": "trusted/46412bca49c3a0f1234567890abcdef123456789/lighthouse-audit.json",
-      "sha256": "fe8561f269538b6316680ef84f0faebdffccddb4c3f9e196e5a9f3e7b402aeee",
+      "sha256": "8720c8495ea0ba302b81467a9978adf36278881053ff0afb7aa99fac235f57b7",
       "bytes": 19461,
       "contentType": "application/json",
       "visibility": "public",
@@ -1128,7 +1128,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": true,
       "actor": "cfbox-gate-04",
       "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
-      "createdAt": "2026-11-27T08:50:50.346Z"
+      "createdAt": "2026-11-27T13:14:34.312Z"
     },
     {
       "name": "lighthouse-audit.html",
@@ -1727,7 +1727,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "history": {
     "schemaVersion": "1.0.0",
     "repository": "smithersai/smithers-ci",
-    "seq": 14,
+    "seq": 18,
     "epics": [
       {
         "id": "epic-1",
@@ -1880,28 +1880,86 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
         "epicId": "epic-4",
         "rank": 1,
         "title": "Launch public Smithers Cloud factory with Lighthouse audit, Cloud MCP, and 3-audience UI",
-        "state": "approved",
+        "state": "landed",
         "lane": "sci-cloud-switchover",
         "notes": [
           {
+            "section": "tried",
+            "text": "Initial GitHub Actions workflow checked secrets inside step-level if expressions and passed empty strings to process.env, causing early CI failures before moving secret guards into env-checked shell branches.",
+            "at": "2026-11-26T23:58:00.000Z"
+          },
+          {
             "section": "evidence",
-            "text": "Built ExecutionTrust 3-tier isolation, OneTimeToken smo_ minter with PKCE S256, SharedObjectStore CAS, 6-category Lighthouse Backpressure Audit Engine, 20-tool Cloud MCP server, 9-page visual Obsidian Wiki, personalized Maintainer/Contributor/Viewer UI, and GitHub mirror release automation.",
-            "at": "2026-11-26T23:48:00.000Z"
+            "text": "Built ExecutionTrust 3-tier isolation, OneTimeToken smo_ minter with PKCE S256, SharedObjectStore CAS, 6-category Lighthouse Backpressure Audit Engine, 20-tool Cloud MCP server, 9-page visual Obsidian Wiki, personalized Maintainer/Contributor/Viewer UI, Cloudflare Durable Object SQLite backend, and GitHub mirror release automation.",
+            "at": "2026-11-27T00:03:04.000Z"
           }
         ],
-        "foldedRealCommits": []
+        "foldedRealCommits": [
+          {
+            "sha": "f55d5edd10fc0dbe7642c2f58140c9bfb15d43b4",
+            "message": "feat: launch smithers-ci public Smithers Cloud factory, Lighthouse backpressure audit, Cloud MCP, one-time sandbox auth, Wiki, and Mythical History",
+            "landedAt": "2026-11-26T23:55:00.000Z"
+          },
+          {
+            "sha": "d4b9055a9197d91d796d1a23bc0c130f72a18261",
+            "message": "fix(ci): move secrets checks out of step-level if expressions in mirror release workflow",
+            "landedAt": "2026-11-26T23:58:37.000Z"
+          },
+          {
+            "sha": "04970e78e5c1b46cd6f56cd93f57f43e689ff0bd",
+            "message": "feat: add Cloudflare FactoryHubDO SQLite persistence, live one-time token exchange, and WorkflowInventory PR secret auditor",
+            "landedAt": "2026-11-27T00:03:04.000Z"
+          }
+        ]
+      },
+      {
+        "id": "m7",
+        "epicId": "epic-4",
+        "rank": 2,
+        "title": "Remediate all 14 root-input security findings, atomic PKCE exchange, and live Markdown Wiki Docs",
+        "state": "landed",
+        "lane": "sci-root-trace-hardening",
+        "notes": [
+          {
+            "section": "tried",
+            "text": "Root-input security audit flagged async PKCE race windows, attenuated artifact scope elevation, untrusted CAS sharing, symlink traversal, and missing DO SQLite migration for waitlist deduplication. Live browser QA also exposed stale asset SPA fallback MIME mismatches and HTML-vs-Markdown rendering on smithers.sh Docs.",
+            "at": "2026-11-27T00:46:00.000Z"
+          },
+          {
+            "section": "evidence",
+            "text": "Closed all 14 findings with atomic SQLite transactionSync PKCE burn (verified 1/10 success and 9/10 401 under concurrent live edge load), untrusted-cas/ isolation with quotas, commit-bound GateReceipts, 1,000+ fuzz tests, zero-JS CSS-filtered Lighthouse HTML, ReplayEngine CLI, URL deep-linking, and live /wiki/*.md serving.",
+            "at": "2026-11-27T00:52:55.000Z"
+          }
+        ],
+        "foldedRealCommits": [
+          {
+            "sha": "aac6e243681b63b63570eba019775fae4a08e3d3",
+            "message": "feat(security+ui): remediate all 14 root-input audit findings, wire live DO MCP playground, SVG wiki diagrams, and 1,000+ fuzz tests",
+            "landedAt": "2026-11-27T00:38:54.000Z"
+          },
+          {
+            "sha": "3e7e21be0c4e35b7a441d90fc5b57a270aa436cd",
+            "message": "fix(worker+ui+docs): fix asset 404/cache headers, serve Markdown wiki docs for smithers.sh Docs tab, migrate DO waitlist dedup, and polish mobile 390px + SVG diagrams",
+            "landedAt": "2026-11-27T00:51:33.000Z"
+          },
+          {
+            "sha": "c43a3d1148a1387d0b125f382c830e122d4ed3fe",
+            "message": "fix(worker): enable run_worker_first for HTML/llms/wiki routes and support HEAD requests",
+            "landedAt": "2026-11-27T00:52:55.000Z"
+          }
+        ]
       }
     ]
   },
   "historyManifest": {
     "repository": "smithersai/smithers-ci",
-    "seq": 14,
+    "seq": 18,
     "refs": {
       "mythicalBookmark": "refs/heads/mythical",
       "notesRef": "refs/notes/mythical",
       "manifestRef": "refs/heads/smithers/history"
     },
-    "manifestDigest": "0b61a5114fbcb8743324fb091e8e44f5a4ff2aa1c8e4531803faa7d9f1484c45",
+    "manifestDigest": "9999148a9bf7ef4615bd49523b8ff47b7486200260eba31f8baa29a4340e97e4",
     "entries": [
       {
         "id": "m1",
@@ -1946,10 +2004,18 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       {
         "id": "m6",
         "epicId": "epic-4",
-        "state": "approved",
+        "state": "landed",
         "parentId": "m5",
-        "foldedCount": 0,
-        "deterministicHash": "56fcc585d4bac30aa0e9eb177b0ad88701ea54af"
+        "foldedCount": 3,
+        "deterministicHash": "dac9a0dfd409fc87b14366474e9f6abb36b2446e"
+      },
+      {
+        "id": "m7",
+        "epicId": "epic-4",
+        "state": "landed",
+        "parentId": "m6",
+        "foldedCount": 3,
+        "deterministicHash": "f1b2a649c5120a622e531913c9338002e193c42d"
       }
     ]
   },

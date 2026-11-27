@@ -18,8 +18,60 @@ export function FactoryBoardView({ snapshot, role, onTodosCountChange }: Factory
   const [newTodoTitle, setNewTodoTitle] = useState("")
   const [newTodoBody, setNewTodoBody] = useState("")
   const [draftBusy, setDraftBusy] = useState(false)
+  const [newIssueTitle, setNewIssueTitle] = useState("")
+  const [newIssueBody, setNewIssueBody] = useState("")
+  const [issueBusy, setIssueBusy] = useState(false)
+  const [newCsTitle, setNewCsTitle] = useState("")
+  const [newCsBranch, setNewCsBranch] = useState("")
+  const [csBusy, setCsBusy] = useState(false)
   const [actionBanner, setActionBanner] = useState<string | null>(null)
   const [artifactFilter, setArtifactFilter] = useState<"all" | "trusted" | "untrusted">("all")
+
+  const callLiveMcpWrite = async <T,>(
+    scope: string,
+    toolName: string,
+    args: Record<string, unknown>
+  ): Promise<T | null> => {
+    const actor = role === "maintainer" ? "roninjin10" : role === "contributor" ? "alice-dev" : "guest"
+    try {
+      const mintRes = await fetch("/smithersai/smithers-ci/mcp/mint", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          subject: `agent:${actor}`,
+          trustTier: "untrusted:community",
+          scopes: ["mcp:read", scope]
+        })
+      })
+      if (!mintRes.ok || !(mintRes.headers.get("content-type") ?? "").includes("application/json")) return null
+      const minted = (await mintRes.json()) as { token: string }
+      const exchRes = await fetch("/smithersai/smithers-ci/mcp/exchange", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: minted.token })
+      })
+      if (!exchRes.ok) return null
+      const lease = (await exchRes.json()) as { leaseToken: string }
+      const rpcRes = await fetch("/smithersai/smithers-ci/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${lease.leaseToken}`
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: Date.now(),
+          method: "tools/call",
+          params: { name: toolName, arguments: args }
+        })
+      })
+      if (!rpcRes.ok) return null
+      const rpc = (await rpcRes.json()) as { result?: { structuredContent?: T } }
+      return rpc.result?.structuredContent ?? null
+    } catch {
+      return null
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -155,6 +207,95 @@ export function FactoryBoardView({ snapshot, role, onTodosCountChange }: Factory
     setActionBanner(`Committed ${id} in person as roninjin10.`)
   }
 
+  const handleCreateIssue = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const title = newIssueTitle.trim()
+    if (title.length < 3) return
+    const body = newIssueBody.trim() || "Opened via live Smithers Cloud MCP issue_create."
+    const actor = role === "maintainer" ? "roninjin10" : role === "contributor" ? "alice-dev" : "guest"
+    setIssueBusy(true)
+    const live = await callLiveMcpWrite<{ issue?: FactorySnapshot["issues"][number] }>(
+      "issue:create",
+      "issue_create",
+      { title, body, labels: ["community"] }
+    )
+    if (live?.issue) {
+      setIssues((prev) => [live.issue!, ...prev.filter((i) => i.number !== live.issue!.number)])
+      setLiveSynced(true)
+      setActionBanner(`Opened public issue #${live.issue.number} in live Cloudflare SQLite DO via single-use MCP auth.`)
+    } else {
+      const nextNum = Math.max(0, ...issues.map((i) => i.number)) + 1
+      setIssues((prev) => [
+        {
+          number: nextNum,
+          title,
+          body,
+          state: "open",
+          triage: "untriaged",
+          author: `${actor} (agent)`,
+          labels: ["community"],
+          comments: [],
+          createdAt: new Date().toISOString()
+        },
+        ...prev
+      ])
+      setActionBanner(`Opened public issue #${nextNum} via MCP issue_create.`)
+    }
+    setNewIssueTitle("")
+    setNewIssueBody("")
+    setIssueBusy(false)
+  }
+
+  const handleProposeChangeset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const title = newCsTitle.trim()
+    const branch = newCsBranch.trim() || `community/stack-${changesets.length + 1}`
+    if (title.length < 3) return
+    const actor = role === "maintainer" ? "roninjin10" : role === "contributor" ? "alice-dev" : "guest"
+    setCsBusy(true)
+    const live = await callLiveMcpWrite<{ changeset?: FactorySnapshot["changesets"][number] }>(
+      "changeset:propose",
+      "changeset_propose",
+      {
+        title,
+        branch,
+        diffSummary: "Proposed over live Cloud MCP (untrusted preview awaiting controlled sandbox certification)"
+      }
+    )
+    if (live?.changeset) {
+      setChangesets((prev) => [...prev.filter((c) => c.id !== live.changeset!.id), live.changeset!])
+      setLiveSynced(true)
+      setActionBanner(
+        `Stacked ${live.changeset.id} onto Cloudflare SQLite DO as untrusted:community preview (gate stays PREVIEW ONLY until a trusted sandbox certifies).`
+      )
+    } else {
+      const pos = changesets.length + 1
+      setChangesets((prev) => [
+        ...prev,
+        {
+          id: `cs-${String(pos).padStart(2, "0")}`,
+          stackPosition: pos,
+          parentId: prev[prev.length - 1]?.id ?? null,
+          branch,
+          title,
+          commitSha: snapshot.commitSha,
+          author: `${actor} (agent)`,
+          trustTier: "untrusted:community",
+          auditScore: 0,
+          gateSatisfied: false,
+          gateReceipt: null,
+          state: "draft",
+          diffSummary: "Community preview proposal awaiting trusted sandbox rerun",
+          updatedAt: new Date().toISOString()
+        }
+      ])
+      setActionBanner(`Proposed changeset cs-${String(pos).padStart(2, "0")} as untrusted preview.`)
+    }
+    setNewCsTitle("")
+    setNewCsBranch("")
+    setCsBusy(false)
+  }
+
   const visibleArtifacts = artifacts.filter((a) => {
     if (artifactFilter === "trusted") return a.trusted
     if (artifactFilter === "untrusted") return !a.trusted
@@ -288,6 +429,34 @@ export function FactoryBoardView({ snapshot, role, onTodosCountChange }: Factory
           <span className="pill">{changesets.length} changesets · {pulls.length} PRs</span>
         </div>
 
+        <form onSubmit={(e) => void handleProposeChangeset(e)} className="grid-3" style={{ marginBottom: "1rem", alignItems: "end" }}>
+          <div>
+            <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginBottom: "0.25rem" }}>
+              Propose changeset title (MCP `changeset_propose`)
+            </label>
+            <input
+              className="input"
+              value={newCsTitle}
+              onChange={(e) => setNewCsTitle(e.target.value)}
+              placeholder="Example: feat(replay): add Go module closure strategy"
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginBottom: "0.25rem" }}>
+              Branch
+            </label>
+            <input
+              className="input"
+              value={newCsBranch}
+              onChange={(e) => setNewCsBranch(e.target.value)}
+              placeholder="community/go-closure"
+            />
+          </div>
+          <button className="btn btn-primary" type="submit" disabled={csBusy}>
+            {csBusy ? "Stacking..." : "Propose Changeset via MCP"}
+          </button>
+        </form>
+
         <div className="table-wrap">
           <table>
             <thead>
@@ -399,9 +568,38 @@ export function FactoryBoardView({ snapshot, role, onTodosCountChange }: Factory
         <div className="card-head">
           <div>
             <h2 className="card-title">Public Issues</h2>
-            <p className="card-sub">Synced two-way between Smithers Cloud and GitHub</p>
+            <p className="card-sub">Synced two-way between Smithers Cloud and GitHub. Policy smithers:* labels are stripped on agent creates.</p>
           </div>
+          <span className="pill pill-info">{issues.length} issues</span>
         </div>
+
+        <form onSubmit={(e) => void handleCreateIssue(e)} className="grid-3" style={{ marginBottom: "1rem", alignItems: "end" }}>
+          <div>
+            <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginBottom: "0.25rem" }}>
+              Open public issue (MCP `issue_create`)
+            </label>
+            <input
+              className="input"
+              value={newIssueTitle}
+              onChange={(e) => setNewIssueTitle(e.target.value)}
+              placeholder="Example: Add Nix flake target discovery"
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginBottom: "0.25rem" }}>
+              Details
+            </label>
+            <input
+              className="input"
+              value={newIssueBody}
+              onChange={(e) => setNewIssueBody(e.target.value)}
+              placeholder="Repro steps or proposal summary"
+            />
+          </div>
+          <button className="btn btn-primary" type="submit" disabled={issueBusy}>
+            {issueBusy ? "Opening..." : "Open Issue via MCP"}
+          </button>
+        </form>
         <div className="table-wrap">
           <table>
             <thead>

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-11-27T08:50:50.344Z",
+  "generatedAt": "2026-11-27T13:14:34.305Z",
   "repository": "smithersai/smithers-ci",
   "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
   "execution": {
@@ -14,8 +14,8 @@
     "trusted": true,
     "downgraded": false,
     "downgradeReason": null,
-    "verifiedAt": "2026-11-27T08:50:50.340Z",
-    "expiresAt": "2026-11-27T09:00:50.339Z"
+    "verifiedAt": "2026-11-27T13:14:34.294Z",
+    "expiresAt": "2026-11-27T13:24:34.291Z"
   },
   "policy": {
     "allowExecution": true,
@@ -44,7 +44,7 @@
     "satisfied": true,
     "trustTier": "trusted:sandbox",
     "actor": "cfbox-gate-04",
-    "verifiedAt": "2026-11-27T08:50:50.340Z"
+    "verifiedAt": "2026-11-27T13:14:34.294Z"
   },
   "overallScore": 100,
   "overallRating": "pass",
@@ -82,11 +82,11 @@
           "status": "pass",
           "score": 100,
           "weight": 4,
-          "displayValue": "35/35 passed",
-          "durationMs": 740,
+          "displayValue": "36/36 passed",
+          "durationMs": 760,
           "evidence": [
             "Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP",
-            "Observed 35 passing and 0 failing tests"
+            "Observed 36 passing and 0 failing tests"
           ]
         },
         {

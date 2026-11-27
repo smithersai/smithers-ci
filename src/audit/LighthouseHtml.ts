@@ -68,7 +68,7 @@ function renderAuditRow(audit: AuditCheck): string {
 function renderCategorySection(cat: AuditCategorySummary): string {
   const rows = cat.audits.map(renderAuditRow).join("\n")
   return `
-  <section class="category-card" id="cat-${escapeHtml(cat.id)}">
+  <section class="category-card cat-section" data-cat="${escapeHtml(cat.id)}" id="cat-${escapeHtml(cat.id)}">
     <header class="category-head">
       <div class="category-title-wrap">
         ${renderGauge(cat.shortTitle, cat.score, 64)}
@@ -85,8 +85,9 @@ function renderCategorySection(cat: AuditCategorySummary): string {
 }
 
 /**
- * Renders a self-contained, zero-network, Lighthouse-inspired HTML backpressure
- * audit report suitable for offline viewing, Smithers Cloud artifacts, and CI releases.
+ * Renders a self-contained, zero-JS, CSP-locked (`default-src 'none'`),
+ * Lighthouse-inspired HTML backpressure audit report with pure-CSS interactive
+ * category filter tabs, dark/light theme switcher, and print styles.
  */
 export function renderLighthouseHtml(report: BackpressureAuditReport): string {
   const shortSha = report.commitSha.slice(0, 12)
@@ -96,8 +97,39 @@ export function renderLighthouseHtml(report: BackpressureAuditReport): string {
     ? `${report.policy.provenanceBadge}: Verified execution eligible for shared cache writes and release gates`
     : `${report.policy.provenanceBadge}: Community run encouraged for fast feedback, isolated from shared cache writes and merge gates`
 
-  const topGauges = report.categories.map((cat) => renderGauge(cat.shortTitle, cat.score, 96)).join("\n")
+  const topGauges = report.categories
+    .map(
+      (cat) => `
+      <label class="gauge-link" for="filter-${escapeHtml(cat.id)}" title="Filter to ${escapeHtml(cat.title)}">
+        ${renderGauge(cat.shortTitle, cat.score, 96)}
+      </label>`
+    )
+    .join("\n")
+
   const categorySections = report.categories.map(renderCategorySection).join("\n")
+
+  const filterRadios = [
+    `<input class="sr-radio" type="radio" name="lh-cat" id="filter-all" checked>`,
+    ...report.categories.map(
+      (cat) => `<input class="sr-radio" type="radio" name="lh-cat" id="filter-${escapeHtml(cat.id)}">`
+    )
+  ].join("\n  ")
+
+  const filterLabels = [
+    `<label class="filter-pill" for="filter-all">All (${report.summary.totalAudits})</label>`,
+    ...report.categories.map(
+      (cat) =>
+        `<label class="filter-pill" for="filter-${escapeHtml(cat.id)}">${escapeHtml(cat.shortTitle)} (${cat.score})</label>`
+    )
+  ].join("\n      ")
+
+  const filterCssRules = report.categories
+    .map(
+      (cat) =>
+        `#filter-${escapeHtml(cat.id)}:checked ~ .report-shell .cat-section:not([data-cat="${escapeHtml(cat.id)}"]) { display: none; }\n` +
+        `#filter-${escapeHtml(cat.id)}:checked ~ .report-shell label[for="filter-${escapeHtml(cat.id)}"] { background: var(--accent); color: #04150f; border-color: transparent; }`
+    )
+    .join("\n")
 
   const maxBaseline = Math.max(...report.waterfall.map((s) => s.baselineMs), 1)
   const waterfallRows = report.waterfall
@@ -144,6 +176,21 @@ export function renderLighthouseHtml(report: BackpressureAuditReport): string {
 <title>Smithers CI Backpressure Audit · ${escapeHtml(report.repository)} @ ${escapeHtml(shortSha)}</title>
 <style>
 :root {
+  --bg: #0b100e;
+  --surface: #121917;
+  --surface-2: #18221f;
+  --text: #eef5f2;
+  --muted: #93a79f;
+  --line: #23312c;
+  --lh-pass: #0cce6b;
+  --lh-avg: #ffa400;
+  --lh-fail: #ff4e42;
+  --accent: #4fd1b1;
+  --base-bar: #475569;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+#lh-light-mode:checked ~ .page-bg {
   --bg: #f8faf9;
   --surface: #ffffff;
   --surface-2: #f1f5f3;
@@ -155,35 +202,23 @@ export function renderLighthouseHtml(report: BackpressureAuditReport): string {
   --lh-fail: #dc2626;
   --accent: #0b6e5b;
   --base-bar: #94a3b8;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b100e;
-    --surface: #121917;
-    --surface-2: #18221f;
-    --text: #eef5f2;
-    --muted: #93a79f;
-    --line: #23312c;
-    --lh-pass: #0cce6b;
-    --lh-avg: #ffa400;
-    --lh-fail: #ff4e42;
-    --accent: #4fd1b1;
-    --base-bar: #475569;
-  }
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 var(--sans); }
+body { margin: 0; font: 15px/1.55 var(--sans); }
+.page-bg { min-height: 100vh; background: var(--bg); color: var(--text); transition: background 160ms ease, color 160ms ease; }
 main { max-width: 1080px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
-.topbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 1.25rem; }
+.sr-radio { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+.topbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; }
 .topbar h1 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
+.topbar-right { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
 .meta { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); }
+.theme-toggle { cursor: pointer; font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); user-select: none; }
+.theme-toggle:hover { border-color: var(--accent); }
 .banner { padding: 0.9rem 1.1rem; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 1.5rem; font-weight: 500; }
 .banner-trusted { background: color-mix(in srgb, var(--lh-pass) 12%, var(--surface)); border-color: color-mix(in srgb, var(--lh-pass) 40%, var(--line)); }
 .banner-untrusted { background: color-mix(in srgb, var(--lh-avg) 14%, var(--surface)); border-color: color-mix(in srgb, var(--lh-avg) 45%, var(--line)); }
 .banner-sub { display: block; margin-top: 0.25rem; font-size: 0.86rem; font-weight: 400; color: var(--muted); }
-.hero-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.75rem 1.25rem; margin-bottom: 1.75rem; }
+.hero-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.75rem 1.25rem; margin-bottom: 1.25rem; }
 .hero-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; border-bottom: 1px solid var(--line); padding-bottom: 1.4rem; margin-bottom: 1.4rem; }
 .overall-wrap { display: flex; align-items: center; gap: 1.25rem; }
 .legend { display: flex; gap: 1.1rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
@@ -192,11 +227,18 @@ main { max-width: 1080px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
 .leg-avg::before { background: var(--lh-avg); }
 .leg-fail::before { background: var(--lh-fail); }
 .gauge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1rem; text-align: center; }
+.gauge-link { cursor: pointer; display: block; padding: 0.45rem; border-radius: 10px; transition: background 140ms ease; }
+.gauge-link:hover { background: var(--surface-2); }
 .lh-gauge { display: flex; flex-direction: column; align-items: center; gap: 0.45rem; }
 .lh-gauge-base { fill: color-mix(in srgb, var(--gauge-color) 11%, transparent); stroke: color-mix(in srgb, var(--gauge-color) 25%, var(--line)); stroke-width: 7; }
 .lh-gauge-arc { fill: none; stroke: var(--gauge-color); stroke-width: 7; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
 .lh-gauge-num { fill: var(--gauge-color); font: 700 26px var(--mono); }
 .lh-gauge-label { font-size: 0.86rem; font-weight: 600; color: var(--text); }
+.filter-bar { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1.25rem; }
+.filter-pill { cursor: pointer; font-family: var(--mono); font-size: 0.78rem; font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); user-select: none; transition: background 120ms ease, color 120ms ease; }
+.filter-pill:hover { color: var(--text); border-color: var(--accent); }
+#filter-all:checked ~ .report-shell label[for="filter-all"] { background: var(--accent); color: #04150f; border-color: transparent; }
+${filterCssRules}
 .category-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
 .category-head { margin-bottom: 0.85rem; }
 .category-title-wrap { display: flex; align-items: center; gap: 1rem; }
@@ -228,89 +270,107 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
 .wf-bar { height: 7px; border-radius: 999px; }
 .wf-base { background: var(--base-bar); }
 .wf-cache { background: var(--lh-pass); }
+@media print {
+  .theme-toggle, .filter-bar { display: none; }
+  .page-bg { background: #ffffff; color: #0f1715; }
+  .category-card, .hero-panel { break-inside: avoid; border-color: #cbd5e1; }
+}
 </style>
 </head>
 <body>
+<input class="sr-radio" type="checkbox" id="lh-light-mode">
+<div class="page-bg">
 <main>
-  <div class="topbar">
-    <h1>Smithers CI Backpressure Audit Report</h1>
-    <div class="meta">${escapeHtml(report.repository)} @ ${escapeHtml(shortSha)} · ${escapeHtml(report.generatedAt)}</div>
-  </div>
+  ${filterRadios}
+  <div class="report-shell">
+    <div class="topbar">
+      <h1>Smithers CI Backpressure Audit Report</h1>
+      <div class="topbar-right">
+        <div class="meta">${escapeHtml(report.repository)} @ ${escapeHtml(shortSha)} · ${escapeHtml(report.generatedAt)}</div>
+        <label class="theme-toggle" for="lh-light-mode">Toggle Light / Dark</label>
+      </div>
+    </div>
 
-  <div class="banner ${bannerClass}">
-    ${escapeHtml(bannerHeadline)}
-    <span class="banner-sub">Actor: ${escapeHtml(report.execution.actor)} · Gate status: ${escapeHtml(report.gate.status)} · ${escapeHtml(report.gate.reason)}</span>
-  </div>
+    <div class="banner ${bannerClass}">
+      ${escapeHtml(bannerHeadline)}
+      <span class="banner-sub">Actor: ${escapeHtml(report.execution.actor)} · Gate status: ${escapeHtml(report.gate.status)} · ${escapeHtml(report.gate.reason)}</span>
+    </div>
 
-  <section class="hero-panel">
-    <div class="hero-top">
-      <div class="overall-wrap">
-        ${renderGauge("Overall", report.overallScore, 112)}
-        <div>
-          <h2 style="margin:0 0 0.25rem;font-size:1.25rem;">Backpressure Health Score</h2>
-          <p class="muted">${report.summary.passed}/${report.summary.totalAudits} audits passed · ${report.summary.warnings} warnings · ${report.summary.failed} failed</p>
-          <p class="muted">Release threshold: ${report.summary.releaseThreshold}/100 · Release gate: <strong>${report.summary.releaseReady ? "SATISFIED" : "NOT SATISFIED"}</strong></p>
+    <section class="hero-panel">
+      <div class="hero-top">
+        <div class="overall-wrap">
+          ${renderGauge("Overall", report.overallScore, 112)}
+          <div>
+            <h2 style="margin:0 0 0.25rem;font-size:1.25rem;">Backpressure Health Score</h2>
+            <p class="muted">${report.summary.passed}/${report.summary.totalAudits} audits passed · ${report.summary.warnings} warnings · ${report.summary.failed} failed</p>
+            <p class="muted">Release threshold: ${report.summary.releaseThreshold}/100 · Release gate: <strong>${report.summary.releaseReady ? "SATISFIED" : "NOT SATISFIED"}</strong> · CSP: <code>script-src 'none'</code></p>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="leg-pass">90-100 Pass</span>
+          <span class="leg-avg">50-89 Needs Work</span>
+          <span class="leg-fail">0-49 Fail</span>
         </div>
       </div>
-      <div class="legend">
-        <span class="leg-pass">90-100 Pass</span>
-        <span class="leg-avg">50-89 Needs Work</span>
-        <span class="leg-fail">0-49 Fail</span>
+      <div class="gauge-grid">
+        ${topGauges}
       </div>
-    </div>
-    <div class="gauge-grid">
-      ${topGauges}
-    </div>
-  </section>
+    </section>
 
-  ${categorySections}
-
-  <section class="category-card">
-    <header class="category-head">
-      <h2 style="margin:0;">Cache & Replay Timing Waterfall</h2>
-      <p class="muted">Baseline cold execution vs shared Smithers Cloud object store (build.smithers.sh)</p>
-    </header>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Target</th>
-            <th>Baseline vs Cached</th>
-            <th class="num">Baseline</th>
-            <th class="num">Cached</th>
-            <th class="num">Speedup</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${waterfallRows}
-        </tbody>
-      </table>
+    <div class="filter-bar" role="tablist" aria-label="Filter backpressure audit categories">
+      ${filterLabels}
     </div>
-  </section>
 
-  <section class="category-card">
-    <header class="category-head">
-      <h2 style="margin:0;">Root-Input-Tracing Security Boundaries</h2>
-      <p class="muted">Every privileged operation verified back to its origin input</p>
-    </header>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Privileged Step</th>
-            <th>Origin Input</th>
-            <th>Trust Boundary</th>
-            <th>Enforcement</th>
-            <th class="num">Untrusted Bypass</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${traceRows}
-        </tbody>
-      </table>
-    </div>
-  </section>
+    ${categorySections}
+
+    <section class="category-card">
+      <header class="category-head">
+        <h2 style="margin:0;">Cache &amp; Replay Timing Waterfall</h2>
+        <p class="muted">Baseline cold execution vs shared Smithers Cloud object store (build.smithers.sh)</p>
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Target</th>
+              <th>Baseline vs Cached</th>
+              <th class="num">Baseline</th>
+              <th class="num">Cached</th>
+              <th class="num">Speedup</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${waterfallRows}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="category-card">
+      <header class="category-head">
+        <h2 style="margin:0;">Root-Input-Tracing Security Boundaries</h2>
+        <p class="muted">Every privileged operation verified back to its origin input</p>
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Privileged Step</th>
+              <th>Origin Input</th>
+              <th>Trust Boundary</th>
+              <th>Enforcement</th>
+              <th class="num">Untrusted Bypass</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${traceRows}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
 </main>
+</div>
 </body>
 </html>`
 }

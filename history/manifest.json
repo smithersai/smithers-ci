@@ -1,12 +1,12 @@
 {
   "repository": "smithersai/smithers-ci",
-  "seq": 14,
+  "seq": 18,
   "refs": {
     "mythicalBookmark": "refs/heads/mythical",
     "notesRef": "refs/notes/mythical",
     "manifestRef": "refs/heads/smithers/history"
   },
-  "manifestDigest": "0b61a5114fbcb8743324fb091e8e44f5a4ff2aa1c8e4531803faa7d9f1484c45",
+  "manifestDigest": "9999148a9bf7ef4615bd49523b8ff47b7486200260eba31f8baa29a4340e97e4",
   "entries": [
     {
       "id": "m1",
@@ -51,10 +51,18 @@
     {
       "id": "m6",
       "epicId": "epic-4",
-      "state": "approved",
+      "state": "landed",
       "parentId": "m5",
-      "foldedCount": 0,
-      "deterministicHash": "56fcc585d4bac30aa0e9eb177b0ad88701ea54af"
+      "foldedCount": 3,
+      "deterministicHash": "dac9a0dfd409fc87b14366474e9f6abb36b2446e"
+    },
+    {
+      "id": "m7",
+      "epicId": "epic-4",
+      "state": "landed",
+      "parentId": "m6",
+      "foldedCount": 3,
+      "deterministicHash": "f1b2a649c5120a622e531913c9338002e193c42d"
     }
   ]
 }

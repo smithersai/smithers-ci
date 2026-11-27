@@ -9,8 +9,32 @@ import { WikiView } from "./components/WikiView.tsx"
 
 type TabId = "home" | "audit" | "factory" | "wiki" | "history" | "mcp"
 
+function parseRoute(pathname: string): { readonly tab: TabId; readonly wikiSlug: string } {
+  const clean = pathname
+    .replace(/^\/smithersai\/smithers-ci(?=\/|$)/, "")
+    .replace(/\/+$/, "") || "/"
+  if (clean === "/audit") return { tab: "audit", wikiSlug: "index" }
+  if (clean === "/factory") return { tab: "factory", wikiSlug: "index" }
+  if (clean === "/history") return { tab: "history", wikiSlug: "index" }
+  if (clean === "/mcp") return { tab: "mcp", wikiSlug: "index" }
+  if (clean === "/wiki") return { tab: "wiki", wikiSlug: "index" }
+  if (clean.startsWith("/wiki/")) {
+    const slug = clean.slice("/wiki/".length).replace(/\.md$/, "").trim().toLowerCase()
+    return { tab: "wiki", wikiSlug: slug || "index" }
+  }
+  return { tab: "home", wikiSlug: "index" }
+}
+
+function pathForRoute(tab: TabId, wikiSlug = "index"): string {
+  if (tab === "home") return "/"
+  if (tab === "wiki") return wikiSlug && wikiSlug !== "index" ? `/wiki/${wikiSlug}` : "/wiki"
+  return `/${tab}`
+}
+
 export function App() {
-  const [tab, setTab] = useState<TabId>("home")
+  const initial = typeof window !== "undefined" ? parseRoute(window.location.pathname) : { tab: "home" as TabId, wikiSlug: "index" }
+  const [tab, setTab] = useState<TabId>(initial.tab)
+  const [wikiSlug, setWikiSlug] = useState<string>(initial.wikiSlug)
   const [role, setRole] = useState<RoleView>("maintainer")
   const [theme, setTheme] = useState<"dark" | "light">("dark")
   const [todosCount, setTodosCount] = useState(FACTORY_SNAPSHOT.todos.length)
@@ -21,6 +45,16 @@ export function App() {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme)
   }, [theme])
+
+  useEffect(() => {
+    const onPop = () => {
+      const next = parseRoute(window.location.pathname)
+      setTab(next.tab)
+      setWikiSlug(next.wikiSlug)
+    }
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [])
 
   useEffect(() => {
     void fetch("/api/factory")
@@ -34,7 +68,19 @@ export function App() {
 
   const selectTab = (next: TabId) => {
     setTab(next)
+    const nextPath = pathForRoute(next, next === "wiki" ? wikiSlug : "index")
+    if (typeof window !== "undefined" && window.location.pathname !== nextPath) {
+      window.history.pushState({}, "", nextPath)
+    }
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const handleWikiSlugChange = (nextSlug: string) => {
+    setWikiSlug(nextSlug)
+    const nextPath = pathForRoute("wiki", nextSlug)
+    if (typeof window !== "undefined" && window.location.pathname !== nextPath) {
+      window.history.pushState({}, "", nextPath)
+    }
   }
 
   const auditScore = FACTORY_SNAPSHOT.trustedAudit.overallScore
@@ -136,7 +182,13 @@ export function App() {
             onTodosCountChange={setTodosCount}
           />
         )}
-        {tab === "wiki" && <WikiView snapshot={FACTORY_SNAPSHOT} />}
+        {tab === "wiki" && (
+          <WikiView
+            snapshot={FACTORY_SNAPSHOT}
+            selectedSlug={wikiSlug}
+            onSelectSlug={handleWikiSlugChange}
+          />
+        )}
         {tab === "history" && <MythicalHistoryView snapshot={FACTORY_SNAPSHOT} />}
         {tab === "mcp" && <McpAuthConsole snapshot={FACTORY_SNAPSHOT} role={role} />}
       </main>

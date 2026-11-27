@@ -8,6 +8,21 @@
 <title>Smithers CI Backpressure Audit · smithersai/smithers-ci @ 46412bca49c3</title>
 <style>
 :root {
+  --bg: #0b100e;
+  --surface: #121917;
+  --surface-2: #18221f;
+  --text: #eef5f2;
+  --muted: #93a79f;
+  --line: #23312c;
+  --lh-pass: #0cce6b;
+  --lh-avg: #ffa400;
+  --lh-fail: #ff4e42;
+  --accent: #4fd1b1;
+  --base-bar: #475569;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+#lh-light-mode:checked ~ .page-bg {
   --bg: #f8faf9;
   --surface: #ffffff;
   --surface-2: #f1f5f3;
@@ -19,35 +34,23 @@
   --lh-fail: #dc2626;
   --accent: #0b6e5b;
   --base-bar: #94a3b8;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b100e;
-    --surface: #121917;
-    --surface-2: #18221f;
-    --text: #eef5f2;
-    --muted: #93a79f;
-    --line: #23312c;
-    --lh-pass: #0cce6b;
-    --lh-avg: #ffa400;
-    --lh-fail: #ff4e42;
-    --accent: #4fd1b1;
-    --base-bar: #475569;
-  }
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 var(--sans); }
+body { margin: 0; font: 15px/1.55 var(--sans); }
+.page-bg { min-height: 100vh; background: var(--bg); color: var(--text); transition: background 160ms ease, color 160ms ease; }
 main { max-width: 1080px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
-.topbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 1.25rem; }
+.sr-radio { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+.topbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; }
 .topbar h1 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
+.topbar-right { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
 .meta { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); }
+.theme-toggle { cursor: pointer; font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); user-select: none; }
+.theme-toggle:hover { border-color: var(--accent); }
 .banner { padding: 0.9rem 1.1rem; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 1.5rem; font-weight: 500; }
 .banner-trusted { background: color-mix(in srgb, var(--lh-pass) 12%, var(--surface)); border-color: color-mix(in srgb, var(--lh-pass) 40%, var(--line)); }
 .banner-untrusted { background: color-mix(in srgb, var(--lh-avg) 14%, var(--surface)); border-color: color-mix(in srgb, var(--lh-avg) 45%, var(--line)); }
 .banner-sub { display: block; margin-top: 0.25rem; font-size: 0.86rem; font-weight: 400; color: var(--muted); }
-.hero-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.75rem 1.25rem; margin-bottom: 1.75rem; }
+.hero-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.75rem 1.25rem; margin-bottom: 1.25rem; }
 .hero-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; border-bottom: 1px solid var(--line); padding-bottom: 1.4rem; margin-bottom: 1.4rem; }
 .overall-wrap { display: flex; align-items: center; gap: 1.25rem; }
 .legend { display: flex; gap: 1.1rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
@@ -56,11 +59,29 @@ main { max-width: 1080px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
 .leg-avg::before { background: var(--lh-avg); }
 .leg-fail::before { background: var(--lh-fail); }
 .gauge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1rem; text-align: center; }
+.gauge-link { cursor: pointer; display: block; padding: 0.45rem; border-radius: 10px; transition: background 140ms ease; }
+.gauge-link:hover { background: var(--surface-2); }
 .lh-gauge { display: flex; flex-direction: column; align-items: center; gap: 0.45rem; }
 .lh-gauge-base { fill: color-mix(in srgb, var(--gauge-color) 11%, transparent); stroke: color-mix(in srgb, var(--gauge-color) 25%, var(--line)); stroke-width: 7; }
 .lh-gauge-arc { fill: none; stroke: var(--gauge-color); stroke-width: 7; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
 .lh-gauge-num { fill: var(--gauge-color); font: 700 26px var(--mono); }
 .lh-gauge-label { font-size: 0.86rem; font-weight: 600; color: var(--text); }
+.filter-bar { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1.25rem; }
+.filter-pill { cursor: pointer; font-family: var(--mono); font-size: 0.78rem; font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); user-select: none; transition: background 120ms ease, color 120ms ease; }
+.filter-pill:hover { color: var(--text); border-color: var(--accent); }
+#filter-all:checked ~ .report-shell label[for="filter-all"] { background: var(--accent); color: #04150f; border-color: transparent; }
+#filter-correctness:checked ~ .report-shell .cat-section:not([data-cat="correctness"]) { display: none; }
+#filter-correctness:checked ~ .report-shell label[for="filter-correctness"] { background: var(--accent); color: #04150f; border-color: transparent; }
+#filter-cache-speed:checked ~ .report-shell .cat-section:not([data-cat="cache-speed"]) { display: none; }
+#filter-cache-speed:checked ~ .report-shell label[for="filter-cache-speed"] { background: var(--accent); color: #04150f; border-color: transparent; }
+#filter-security-trust:checked ~ .report-shell .cat-section:not([data-cat="security-trust"]) { display: none; }
+#filter-security-trust:checked ~ .report-shell label[for="filter-security-trust"] { background: var(--accent); color: #04150f; border-color: transparent; }
+#filter-formal-fuzz:checked ~ .report-shell .cat-section:not([data-cat="formal-fuzz"]) { display: none; }
+#filter-formal-fuzz:checked ~ .report-shell label[for="filter-formal-fuzz"] { background: var(--accent); color: #04150f; border-color: transparent; }
+#filter-wiki-docs:checked ~ .report-shell .cat-section:not([data-cat="wiki-docs"]) { display: none; }
+#filter-wiki-docs:checked ~ .report-shell label[for="filter-wiki-docs"] { background: var(--accent); color: #04150f; border-color: transparent; }
+#filter-release-cloud:checked ~ .report-shell .cat-section:not([data-cat="release-cloud"]) { display: none; }
+#filter-release-cloud:checked ~ .report-shell label[for="filter-release-cloud"] { background: var(--accent); color: #04150f; border-color: transparent; }
 .category-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
 .category-head { margin-bottom: 0.85rem; }
 .category-title-wrap { display: flex; align-items: center; gap: 1rem; }
@@ -92,24 +113,42 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
 .wf-bar { height: 7px; border-radius: 999px; }
 .wf-base { background: var(--base-bar); }
 .wf-cache { background: var(--lh-pass); }
+@media print {
+  .theme-toggle, .filter-bar { display: none; }
+  .page-bg { background: #ffffff; color: #0f1715; }
+  .category-card, .hero-panel { break-inside: avoid; border-color: #cbd5e1; }
+}
 </style>
 </head>
 <body>
+<input class="sr-radio" type="checkbox" id="lh-light-mode">
+<div class="page-bg">
 <main>
-  <div class="topbar">
-    <h1>Smithers CI Backpressure Audit Report</h1>
-    <div class="meta">smithersai/smithers-ci @ 46412bca49c3 · 2026-11-27T08:50:50.344Z</div>
-  </div>
+  <input class="sr-radio" type="radio" name="lh-cat" id="filter-all" checked>
+  <input class="sr-radio" type="radio" name="lh-cat" id="filter-correctness">
+  <input class="sr-radio" type="radio" name="lh-cat" id="filter-cache-speed">
+  <input class="sr-radio" type="radio" name="lh-cat" id="filter-security-trust">
+  <input class="sr-radio" type="radio" name="lh-cat" id="filter-formal-fuzz">
+  <input class="sr-radio" type="radio" name="lh-cat" id="filter-wiki-docs">
+  <input class="sr-radio" type="radio" name="lh-cat" id="filter-release-cloud">
+  <div class="report-shell">
+    <div class="topbar">
+      <h1>Smithers CI Backpressure Audit Report</h1>
+      <div class="topbar-right">
+        <div class="meta">smithersai/smithers-ci @ 46412bca49c3 · 2026-11-27T13:14:34.305Z</div>
+        <label class="theme-toggle" for="lh-light-mode">Toggle Light / Dark</label>
+      </div>
+    </div>
 
-  <div class="banner banner-trusted">
-    TRUSTED SANDBOX: Verified execution eligible for shared cache writes and release gates
-    <span class="banner-sub">Actor: cfbox-gate-04 · Gate status: passed · Gate lighthouse-backpressure verified by trusted:sandbox (cfbox-gate-04).</span>
-  </div>
+    <div class="banner banner-trusted">
+      TRUSTED SANDBOX: Verified execution eligible for shared cache writes and release gates
+      <span class="banner-sub">Actor: cfbox-gate-04 · Gate status: passed · Gate lighthouse-backpressure verified by trusted:sandbox (cfbox-gate-04).</span>
+    </div>
 
-  <section class="hero-panel">
-    <div class="hero-top">
-      <div class="overall-wrap">
-        
+    <section class="hero-panel">
+      <div class="hero-top">
+        <div class="overall-wrap">
+          
   <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
     <svg viewBox="0 0 100 100" width="112" height="112" role="img" aria-label="Overall score 100 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
@@ -120,20 +159,22 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </svg>
     <div class="lh-gauge-label">Overall</div>
   </div>
-        <div>
-          <h2 style="margin:0 0 0.25rem;font-size:1.25rem;">Backpressure Health Score</h2>
-          <p class="muted">20/20 audits passed · 0 warnings · 0 failed</p>
-          <p class="muted">Release threshold: 90/100 · Release gate: <strong>SATISFIED</strong></p>
+          <div>
+            <h2 style="margin:0 0 0.25rem;font-size:1.25rem;">Backpressure Health Score</h2>
+            <p class="muted">20/20 audits passed · 0 warnings · 0 failed</p>
+            <p class="muted">Release threshold: 90/100 · Release gate: <strong>SATISFIED</strong> · CSP: <code>script-src 'none'</code></p>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="leg-pass">90-100 Pass</span>
+          <span class="leg-avg">50-89 Needs Work</span>
+          <span class="leg-fail">0-49 Fail</span>
         </div>
       </div>
-      <div class="legend">
-        <span class="leg-pass">90-100 Pass</span>
-        <span class="leg-avg">50-89 Needs Work</span>
-        <span class="leg-fail">0-49 Fail</span>
-      </div>
-    </div>
-    <div class="gauge-grid">
-      
+      <div class="gauge-grid">
+        
+      <label class="gauge-link" for="filter-correctness" title="Filter to Correctness &amp; Determinism">
+        
   <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
     <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Correctness score 100 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
@@ -144,7 +185,10 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </svg>
     <div class="lh-gauge-label">Correctness</div>
   </div>
+      </label>
 
+      <label class="gauge-link" for="filter-cache-speed" title="Filter to Cache &amp; Speed">
+        
   <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
     <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Cache &amp; Speed score 99 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
@@ -155,7 +199,10 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </svg>
     <div class="lh-gauge-label">Cache &amp; Speed</div>
   </div>
+      </label>
 
+      <label class="gauge-link" for="filter-security-trust" title="Filter to Security &amp; Trust Isolation">
+        
   <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
     <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Security score 100 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
@@ -166,7 +213,10 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </svg>
     <div class="lh-gauge-label">Security</div>
   </div>
+      </label>
 
+      <label class="gauge-link" for="filter-formal-fuzz" title="Filter to Formal &amp; Fuzz Assurance">
+        
   <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
     <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Formal &amp; Fuzz score 98 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
@@ -177,7 +227,10 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </svg>
     <div class="lh-gauge-label">Formal &amp; Fuzz</div>
   </div>
+      </label>
 
+      <label class="gauge-link" for="filter-wiki-docs" title="Filter to Wiki &amp; Docs Freshness">
+        
   <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
     <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Wiki &amp; Docs score 100 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
@@ -188,7 +241,10 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </svg>
     <div class="lh-gauge-label">Wiki &amp; Docs</div>
   </div>
+      </label>
 
+      <label class="gauge-link" for="filter-release-cloud" title="Filter to Release &amp; Cloud Readiness">
+        
   <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
     <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Cloud Release score 100 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
@@ -199,11 +255,22 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </svg>
     <div class="lh-gauge-label">Cloud Release</div>
   </div>
-    </div>
-  </section>
+      </label>
+      </div>
+    </section>
 
-  
-  <section class="category-card" id="cat-correctness">
+    <div class="filter-bar" role="tablist" aria-label="Filter backpressure audit categories">
+      <label class="filter-pill" for="filter-all">All (20)</label>
+      <label class="filter-pill" for="filter-correctness">Correctness (100)</label>
+      <label class="filter-pill" for="filter-cache-speed">Cache &amp; Speed (99)</label>
+      <label class="filter-pill" for="filter-security-trust">Security (100)</label>
+      <label class="filter-pill" for="filter-formal-fuzz">Formal &amp; Fuzz (98)</label>
+      <label class="filter-pill" for="filter-wiki-docs">Wiki &amp; Docs (100)</label>
+      <label class="filter-pill" for="filter-release-cloud">Cloud Release (100)</label>
+    </div>
+
+    
+  <section class="category-card cat-section" data-cat="correctness" id="cat-correctness">
     <header class="category-head">
       <div class="category-title-wrap">
         
@@ -244,14 +311,14 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
       <span class="audit-title">Unit, Security &amp; Protocol Suites</span>
-      <span class="audit-value">35/35 passed</span>
+      <span class="audit-value">36/36 passed</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
       <p>Verifies trust isolation, one-time tokens, CAS integrity, audit scoring, wiki, history, and MCP tools.</p>
-      <ul class="evidence-list"><li><code>Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP</code></li><li><code>Observed 35 passing and 0 failing tests</code></li></ul>
+      <ul class="evidence-list"><li><code>Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP</code></li><li><code>Observed 36 passing and 0 failing tests</code></li></ul>
       
-      <div class="audit-meta">ID: <code>unit-integration-tests</code> · Weight: 4 · 740ms</div>
+      <div class="audit-meta">ID: <code>unit-integration-tests</code> · Weight: 4 · 760ms</div>
     </div>
   </details>
 
@@ -287,7 +354,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </div>
   </section>
 
-  <section class="category-card" id="cat-cache-speed">
+  <section class="category-card cat-section" data-cat="cache-speed" id="cat-cache-speed">
     <header class="category-head">
       <div class="category-title-wrap">
         
@@ -356,7 +423,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </div>
   </section>
 
-  <section class="category-card" id="cat-security-trust">
+  <section class="category-card cat-section" data-cat="security-trust" id="cat-security-trust">
     <header class="category-head">
       <div class="category-title-wrap">
         
@@ -440,7 +507,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </div>
   </section>
 
-  <section class="category-card" id="cat-formal-fuzz">
+  <section class="category-card cat-section" data-cat="formal-fuzz" id="cat-formal-fuzz">
     <header class="category-head">
       <div class="category-title-wrap">
         
@@ -494,7 +561,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </div>
   </section>
 
-  <section class="category-card" id="cat-wiki-docs">
+  <section class="category-card cat-section" data-cat="wiki-docs" id="cat-wiki-docs">
     <header class="category-head">
       <div class="category-title-wrap">
         
@@ -563,7 +630,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </div>
   </section>
 
-  <section class="category-card" id="cat-release-cloud">
+  <section class="category-card cat-section" data-cat="release-cloud" id="cat-release-cloud">
     <header class="category-head">
       <div class="category-title-wrap">
         
@@ -647,24 +714,24 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </div>
   </section>
 
-  <section class="category-card">
-    <header class="category-head">
-      <h2 style="margin:0;">Cache & Replay Timing Waterfall</h2>
-      <p class="muted">Baseline cold execution vs shared Smithers Cloud object store (build.smithers.sh)</p>
-    </header>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Target</th>
-            <th>Baseline vs Cached</th>
-            <th class="num">Baseline</th>
-            <th class="num">Cached</th>
-            <th class="num">Speedup</th>
-          </tr>
-        </thead>
-        <tbody>
-          
+    <section class="category-card">
+      <header class="category-head">
+        <h2 style="margin:0;">Cache &amp; Replay Timing Waterfall</h2>
+        <p class="muted">Baseline cold execution vs shared Smithers Cloud object store (build.smithers.sh)</p>
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Target</th>
+              <th>Baseline vs Cached</th>
+              <th class="num">Baseline</th>
+              <th class="num">Cached</th>
+              <th class="num">Speedup</th>
+            </tr>
+          </thead>
+          <tbody>
+            
       <tr>
         <td><code>typecheck (tsc --noEmit)</code></td>
         <td>
@@ -742,29 +809,29 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
         <td class="num ok">0.03s</td>
         <td class="num">13.6x</td>
       </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-  <section class="category-card">
-    <header class="category-head">
-      <h2 style="margin:0;">Root-Input-Tracing Security Boundaries</h2>
-      <p class="muted">Every privileged operation verified back to its origin input</p>
-    </header>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Privileged Step</th>
-            <th>Origin Input</th>
-            <th>Trust Boundary</th>
-            <th>Enforcement</th>
-            <th class="num">Untrusted Bypass</th>
-          </tr>
-        </thead>
-        <tbody>
-          
+    <section class="category-card">
+      <header class="category-head">
+        <h2 style="margin:0;">Root-Input-Tracing Security Boundaries</h2>
+        <p class="muted">Every privileged operation verified back to its origin input</p>
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Privileged Step</th>
+              <th>Origin Input</th>
+              <th>Trust Boundary</th>
+              <th>Enforcement</th>
+              <th class="num">Untrusted Bypass</th>
+            </tr>
+          </thead>
+          <tbody>
+            
       <tr>
         <td><strong>Shared Object Store Cache Write (/ac, /cas)</strong></td>
         <td>HMAC-signed ExecutionClaim + server-minted cache:write scope</td>
@@ -804,10 +871,12 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
         <td>403 person_only for all agent and sandbox tokens regardless of underlying user role</td>
         <td class="num ok">Blocked</td>
       </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
 </main>
+</div>
 </body>
 </html>

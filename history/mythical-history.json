@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "smithersai/smithers-ci",
-  "seq": 14,
+  "seq": 18,
   "epics": [
     {
       "id": "epic-1",
@@ -154,16 +154,74 @@
       "epicId": "epic-4",
       "rank": 1,
       "title": "Launch public Smithers Cloud factory with Lighthouse audit, Cloud MCP, and 3-audience UI",
-      "state": "approved",
+      "state": "landed",
       "lane": "sci-cloud-switchover",
       "notes": [
         {
+          "section": "tried",
+          "text": "Initial GitHub Actions workflow checked secrets inside step-level if expressions and passed empty strings to process.env, causing early CI failures before moving secret guards into env-checked shell branches.",
+          "at": "2026-11-26T23:58:00.000Z"
+        },
+        {
           "section": "evidence",
-          "text": "Built ExecutionTrust 3-tier isolation, OneTimeToken smo_ minter with PKCE S256, SharedObjectStore CAS, 6-category Lighthouse Backpressure Audit Engine, 20-tool Cloud MCP server, 9-page visual Obsidian Wiki, personalized Maintainer/Contributor/Viewer UI, and GitHub mirror release automation.",
-          "at": "2026-11-26T23:48:00.000Z"
+          "text": "Built ExecutionTrust 3-tier isolation, OneTimeToken smo_ minter with PKCE S256, SharedObjectStore CAS, 6-category Lighthouse Backpressure Audit Engine, 20-tool Cloud MCP server, 9-page visual Obsidian Wiki, personalized Maintainer/Contributor/Viewer UI, Cloudflare Durable Object SQLite backend, and GitHub mirror release automation.",
+          "at": "2026-11-27T00:03:04.000Z"
         }
       ],
-      "foldedRealCommits": []
+      "foldedRealCommits": [
+        {
+          "sha": "f55d5edd10fc0dbe7642c2f58140c9bfb15d43b4",
+          "message": "feat: launch smithers-ci public Smithers Cloud factory, Lighthouse backpressure audit, Cloud MCP, one-time sandbox auth, Wiki, and Mythical History",
+          "landedAt": "2026-11-26T23:55:00.000Z"
+        },
+        {
+          "sha": "d4b9055a9197d91d796d1a23bc0c130f72a18261",
+          "message": "fix(ci): move secrets checks out of step-level if expressions in mirror release workflow",
+          "landedAt": "2026-11-26T23:58:37.000Z"
+        },
+        {
+          "sha": "04970e78e5c1b46cd6f56cd93f57f43e689ff0bd",
+          "message": "feat: add Cloudflare FactoryHubDO SQLite persistence, live one-time token exchange, and WorkflowInventory PR secret auditor",
+          "landedAt": "2026-11-27T00:03:04.000Z"
+        }
+      ]
+    },
+    {
+      "id": "m7",
+      "epicId": "epic-4",
+      "rank": 2,
+      "title": "Remediate all 14 root-input security findings, atomic PKCE exchange, and live Markdown Wiki Docs",
+      "state": "landed",
+      "lane": "sci-root-trace-hardening",
+      "notes": [
+        {
+          "section": "tried",
+          "text": "Root-input security audit flagged async PKCE race windows, attenuated artifact scope elevation, untrusted CAS sharing, symlink traversal, and missing DO SQLite migration for waitlist deduplication. Live browser QA also exposed stale asset SPA fallback MIME mismatches and HTML-vs-Markdown rendering on smithers.sh Docs.",
+          "at": "2026-11-27T00:46:00.000Z"
+        },
+        {
+          "section": "evidence",
+          "text": "Closed all 14 findings with atomic SQLite transactionSync PKCE burn (verified 1/10 success and 9/10 401 under concurrent live edge load), untrusted-cas/ isolation with quotas, commit-bound GateReceipts, 1,000+ fuzz tests, zero-JS CSS-filtered Lighthouse HTML, ReplayEngine CLI, URL deep-linking, and live /wiki/*.md serving.",
+          "at": "2026-11-27T00:52:55.000Z"
+        }
+      ],
+      "foldedRealCommits": [
+        {
+          "sha": "aac6e243681b63b63570eba019775fae4a08e3d3",
+          "message": "feat(security+ui): remediate all 14 root-input audit findings, wire live DO MCP playground, SVG wiki diagrams, and 1,000+ fuzz tests",
+          "landedAt": "2026-11-27T00:38:54.000Z"
+        },
+        {
+          "sha": "3e7e21be0c4e35b7a441d90fc5b57a270aa436cd",
+          "message": "fix(worker+ui+docs): fix asset 404/cache headers, serve Markdown wiki docs for smithers.sh Docs tab, migrate DO waitlist dedup, and polish mobile 390px + SVG diagrams",
+          "landedAt": "2026-11-27T00:51:33.000Z"
+        },
+        {
+          "sha": "c43a3d1148a1387d0b125f382c830e122d4ed3fe",
+          "message": "fix(worker): enable run_worker_first for HTML/llms/wiki routes and support HEAD requests",
+          "landedAt": "2026-11-27T00:52:55.000Z"
+        }
+      ]
     }
   ]
 }

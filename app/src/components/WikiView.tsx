@@ -4,6 +4,8 @@ import { WikiDiagram } from "./WikiDiagram.tsx"
 
 interface WikiViewProps {
   readonly snapshot: FactorySnapshot
+  readonly selectedSlug?: string
+  readonly onSelectSlug?: (slug: string) => void
 }
 
 function renderInlineText(
@@ -197,9 +199,10 @@ function MarkdownBlocks({
   return <div>{blocks}</div>
 }
 
-export function WikiView({ snapshot }: WikiViewProps) {
-  const [selectedSlug, setSelectedSlug] = useState<string>("index")
+export function WikiView({ snapshot, selectedSlug: controlledSlug, onSelectSlug }: WikiViewProps) {
+  const [localSlug, setLocalSlug] = useState<string>(controlledSlug ?? "index")
   const [search, setSearch] = useState("")
+  const selectedSlug = controlledSlug ?? localSlug
 
   const filteredPages = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -213,7 +216,8 @@ export function WikiView({ snapshot }: WikiViewProps) {
   }, [snapshot.wiki.pages, search])
 
   const selectPage = (slug: string) => {
-    setSelectedSlug(slug)
+    setLocalSlug(slug)
+    onSelectSlug?.(slug)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
