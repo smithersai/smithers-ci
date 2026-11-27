@@ -199,6 +199,22 @@ export class FactoryHubDO {
         created_at TEXT NOT NULL
       );
     `)
+    // Idempotent v1 -> v2 schema migration for already-provisioned Durable Objects.
+    this.sql.exec(`
+      DELETE FROM waitlist_requests
+      WHERE rowid NOT IN (
+        SELECT MIN(rowid) FROM waitlist_requests GROUP BY lower(repo)
+      );
+    `)
+    this.sql.exec(`
+      UPDATE waitlist_requests SET repo = lower(repo) WHERE repo != lower(repo);
+    `)
+    this.sql.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_repo_unique ON waitlist_requests (repo);
+    `)
+    for (const row of this.sql.exec(`SELECT repo, created_at FROM waitlist_requests`).toArray()) {
+      this.waitlist.set(String(row.repo).toLowerCase(), String(row.created_at))
+    }
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS factory_todos (
         id TEXT PRIMARY KEY,

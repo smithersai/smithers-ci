@@ -1,5 +1,5 @@
 {
-  "docs": "https://ci.smithers.sh/llms.txt",
+  "docs": "https://smithers-ci-factory.willcory10.workers.dev/llms.txt",
   "sections": [
     {
       "title": "Maintainer Command Center",
@@ -102,13 +102,13 @@
           "text": "Read your existing CI, record exact file reads at the Linux kernel boundary, share one cloud object store, and inspect every commit through a 0 to 100 Lighthouse audit report.",
           "install": "bunx smithers-ci --commits 4",
           "announcement": {
-            "label": "Public on Smithers Cloud with live MCP, Wiki, and Mythical History",
-            "url": "https://ci.smithers.sh"
+            "label": "Open live Lighthouse Backpressure Dashboard, Cloud MCP Playground & Wiki",
+            "url": "https://smithers-ci-factory.willcory10.workers.dev"
           },
           "actions": [
             {
-              "label": "Site & Docs",
-              "url": "https://ci.smithers.sh"
+              "label": "Factory & Audit UI",
+              "url": "https://smithers-ci-factory.willcory10.workers.dev"
             },
             {
               "label": "GitHub Mirror",

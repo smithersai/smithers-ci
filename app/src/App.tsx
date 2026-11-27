@@ -13,6 +13,7 @@ export function App() {
   const [tab, setTab] = useState<TabId>("home")
   const [role, setRole] = useState<RoleView>("maintainer")
   const [theme, setTheme] = useState<"dark" | "light">("dark")
+  const [todosCount, setTodosCount] = useState(FACTORY_SNAPSHOT.todos.length)
   const [showWaitlist, setShowWaitlist] = useState(false)
   const [waitlistRepo, setWaitlistRepo] = useState("")
   const [waitlistSubmitted, setWaitlistSubmitted] = useState(false)
@@ -20,6 +21,21 @@ export function App() {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme)
   }, [theme])
+
+  useEffect(() => {
+    void fetch("/api/factory")
+      .then(async (res) => {
+        if (!res.ok || !(res.headers.get("content-type") ?? "").includes("application/json")) return
+        const data = (await res.json()) as { todos?: unknown[] }
+        if (Array.isArray(data.todos)) setTodosCount(data.todos.length)
+      })
+      .catch(() => undefined)
+  }, [])
+
+  const selectTab = (next: TabId) => {
+    setTab(next)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   const auditScore = FACTORY_SNAPSHOT.trustedAudit.overallScore
 
@@ -81,22 +97,22 @@ export function App() {
           </div>
 
           <nav className="nav-tabs" aria-label="Repository factory navigation">
-            <button className={`nav-tab ${tab === "home" ? "active" : ""}`} onClick={() => setTab("home")}>
+            <button className={`nav-tab ${tab === "home" ? "active" : ""}`} onClick={() => selectTab("home")}>
               Home
             </button>
-            <button className={`nav-tab ${tab === "audit" ? "active" : ""}`} onClick={() => setTab("audit")}>
+            <button className={`nav-tab ${tab === "audit" ? "active" : ""}`} onClick={() => selectTab("audit")}>
               Lighthouse Audit <span className="tab-count">{auditScore}</span>
             </button>
-            <button className={`nav-tab ${tab === "factory" ? "active" : ""}`} onClick={() => setTab("factory")}>
-              Factory & TODOs <span className="tab-count">{FACTORY_SNAPSHOT.todos.length}</span>
+            <button className={`nav-tab ${tab === "factory" ? "active" : ""}`} onClick={() => selectTab("factory")}>
+              Factory & TODOs <span className="tab-count">{todosCount}</span>
             </button>
-            <button className={`nav-tab ${tab === "wiki" ? "active" : ""}`} onClick={() => setTab("wiki")}>
+            <button className={`nav-tab ${tab === "wiki" ? "active" : ""}`} onClick={() => selectTab("wiki")}>
               Wiki <span className="tab-count">{FACTORY_SNAPSHOT.wiki.pages.length}</span>
             </button>
-            <button className={`nav-tab ${tab === "history" ? "active" : ""}`} onClick={() => setTab("history")}>
+            <button className={`nav-tab ${tab === "history" ? "active" : ""}`} onClick={() => selectTab("history")}>
               Mythical History <span className="tab-count">{FACTORY_SNAPSHOT.history.commits.length}</span>
             </button>
-            <button className={`nav-tab ${tab === "mcp" ? "active" : ""}`} onClick={() => setTab("mcp")}>
+            <button className={`nav-tab ${tab === "mcp" ? "active" : ""}`} onClick={() => selectTab("mcp")}>
               Cloud MCP & Auth <span className="tab-count">{FACTORY_SNAPSHOT.mcpTools.length}</span>
             </button>
           </nav>
@@ -108,12 +124,18 @@ export function App() {
           <HomeView
             snapshot={FACTORY_SNAPSHOT}
             role={role}
-            onNavigate={setTab}
+            onNavigate={selectTab}
             onRequestWaitlist={() => setShowWaitlist(true)}
           />
         )}
         {tab === "audit" && <LighthouseAuditView snapshot={FACTORY_SNAPSHOT} />}
-        {tab === "factory" && <FactoryBoardView snapshot={FACTORY_SNAPSHOT} role={role} />}
+        {tab === "factory" && (
+          <FactoryBoardView
+            snapshot={FACTORY_SNAPSHOT}
+            role={role}
+            onTodosCountChange={setTodosCount}
+          />
+        )}
         {tab === "wiki" && <WikiView snapshot={FACTORY_SNAPSHOT} />}
         {tab === "history" && <MythicalHistoryView snapshot={FACTORY_SNAPSHOT} />}
         {tab === "mcp" && <McpAuthConsole snapshot={FACTORY_SNAPSHOT} role={role} />}

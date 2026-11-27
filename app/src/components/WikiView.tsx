@@ -212,6 +212,11 @@ export function WikiView({ snapshot }: WikiViewProps) {
     )
   }, [snapshot.wiki.pages, search])
 
+  const selectPage = (slug: string) => {
+    setSelectedSlug(slug)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   const activePage =
     snapshot.wiki.pages.find((p) => p.slug === selectedSlug) ?? snapshot.wiki.pages[0]
 
@@ -239,7 +244,7 @@ export function WikiView({ snapshot }: WikiViewProps) {
             <button
               key={page.slug}
               className={`wiki-nav-item ${page.slug === activePage.slug ? "active" : ""}`}
-              onClick={() => setSelectedSlug(page.slug)}
+              onClick={() => selectPage(page.slug)}
             >
               {page.title}
             </button>
@@ -257,7 +262,7 @@ export function WikiView({ snapshot }: WikiViewProps) {
           <span className="pill">{activePage.filePath}</span>
           <span className="pill pill-pass">{activePage.hasDiagram ? "Visual-first diagram verified" : "No diagram"}</span>
         </div>
-        <MarkdownBlocks slug={activePage.slug} markdown={activePage.markdown} onSelectSlug={setSelectedSlug} />
+        <MarkdownBlocks slug={activePage.slug} markdown={activePage.markdown} onSelectSlug={selectPage} />
       </article>
 
       {/* Right Backlinks & Graph */}
@@ -270,7 +275,7 @@ export function WikiView({ snapshot }: WikiViewProps) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
             {activePage.backlinks.map((slug) => (
-              <button key={slug} className="wiki-nav-item wiki-link-row" onClick={() => setSelectedSlug(slug)}>
+              <button key={slug} className="wiki-nav-item wiki-link-row" onClick={() => selectPage(slug)}>
                 ← {slug}
               </button>
             ))}
@@ -282,7 +287,7 @@ export function WikiView({ snapshot }: WikiViewProps) {
         </strong>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
           {activePage.linksOut.map((slug) => (
-            <button key={slug} className="wiki-nav-item wiki-link-row" onClick={() => setSelectedSlug(slug)}>
+            <button key={slug} className="wiki-nav-item wiki-link-row" onClick={() => selectPage(slug)}>
               → {slug}
             </button>
           ))}

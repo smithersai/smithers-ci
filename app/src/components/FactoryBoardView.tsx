@@ -5,9 +5,10 @@ import type { RoleView } from "./HomeView.tsx"
 interface FactoryBoardViewProps {
   readonly snapshot: FactorySnapshot
   readonly role: RoleView
+  readonly onTodosCountChange?: (count: number) => void
 }
 
-export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
+export function FactoryBoardView({ snapshot, role, onTodosCountChange }: FactoryBoardViewProps) {
   const [todos, setTodos] = useState(() => [...snapshot.todos])
   const [issues, setIssues] = useState(() => [...snapshot.issues])
   const [changesets, setChangesets] = useState(() => [...snapshot.changesets])
@@ -35,7 +36,10 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
           artifacts?: FactorySnapshot["artifacts"]
         }
         if (cancelled) return
-        if (Array.isArray(data.todos)) setTodos([...data.todos])
+        if (Array.isArray(data.todos)) {
+          setTodos([...data.todos])
+          onTodosCountChange?.(data.todos.length)
+        }
         if (Array.isArray(data.issues)) setIssues([...data.issues])
         if (Array.isArray(data.changesets)) setChangesets([...data.changesets])
         if (Array.isArray(data.pulls)) setPulls([...data.pulls])
@@ -101,7 +105,11 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
             }
             const created = rpc.result?.structuredContent?.todo
             if (created) {
-              setTodos((prev) => [created, ...prev.filter((t) => t.id !== created.id)])
+              setTodos((prev) => {
+                const next = [created, ...prev.filter((t) => t.id !== created.id)]
+                onTodosCountChange?.(next.length)
+                return next
+              })
               setLiveSynced(true)
               setNewTodoTitle("")
               setNewTodoBody("")
@@ -249,7 +257,7 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
                       {todo.status}
                     </span>
                   </td>
-                  <td>
+                  <td className="nowrap">
                     <code>{todo.author}</code>
                   </td>
                   <td className="num">

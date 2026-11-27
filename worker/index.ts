@@ -18,6 +18,7 @@ export interface WorkerEnv {
 }
 
 const MAX_REQUEST_BODY_BYTES = 256 * 1024 // 256 KiB hard edge cap
+const STATIC_ASSET_EXT_RE = /\.(?:js|mjs|css|map|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|json|txt|xml|wasm)$/i
 const fallbackHub = new FactoryHubDO({ storage: {} })
 
 function constantTimeEqual(a: string, b: string): boolean {
@@ -38,6 +39,54 @@ function jsonResponse(body: unknown, status = 200): Response {
       "x-content-type-options": "nosniff"
     }
   })
+}
+
+function withCacheHeaders(response: Response, cacheControl: string): Response {
+  const headers = new Headers(response.headers)
+  headers.set("cache-control", cacheControl)
+  headers.set("x-content-type-options", "nosniff")
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  })
+}
+
+function renderLlmsTxt(origin: string): string {
+  const lines = [
+    "# Smithers CI",
+    "",
+    "> Fast kernel-recorded incremental CI, Lighthouse backpressure audits, Cloud MCP, Obsidian Wiki, and Mythical History built publicly on Smithers Cloud.",
+    "",
+    "## Wiki & Architecture",
+    ""
+  ]
+  for (const page of FACTORY_SNAPSHOT.wiki.pages) {
+    lines.push(`- [${page.title}](${origin}/wiki/${page.slug}.md): ${page.summary}`)
+  }
+  lines.push("")
+  return lines.join("\n")
+}
+
+function renderWikiMarkdown(slug: string, origin: string): string | null {
+  const page = FACTORY_SNAPSHOT.wiki.pages.find((p) => p.slug === slug)
+  if (!page) return null
+  // Convert Obsidian [[slug]] or [[slug|Label]] links outside code blocks to standard Markdown links for external Docs viewers.
+  const lines = page.markdown.split(/\r?\n/)
+  let inFence = false
+  const rewritten = lines.map((line) => {
+    if (line.trim().startsWith("```")) {
+      inFence = !inFence
+      return line
+    }
+    if (inFence) return line
+    return line.replace(/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_m, rawTarget: string, label?: string) => {
+      const targetSlug = rawTarget.trim().toLowerCase()
+      const display = (label ?? rawTarget).trim()
+      return `[${display}](${origin}/wiki/${targetSlug}.md)`
+    })
+  })
+  return `${rewritten.join("\n").trimEnd()}\n`
 }
 
 function getHub(env: WorkerEnv): { fetch(request: Request): Promise<Response> } {
@@ -99,6 +148,35 @@ export default {
         lighthouseScore: FACTORY_SNAPSHOT.trustedAudit.overallScore,
         objectStore: FACTORY_SNAPSHOT.objectStoreEndpoint,
         durableObject: Boolean(env.FACTORY_HUB)
+      })
+    }
+
+    if (request.method === "GET" && url.pathname === "/llms.txt") {
+      return new Response(renderLlmsTxt(origin), {
+        status: 200,
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "public, max-age=300",
+          "access-control-allow-origin": "*",
+          "x-content-type-options": "nosniff"
+        }
+      })
+    }
+
+    const wikiMatch = /^\/wiki\/([a-z0-9-]+)\.md$/i.exec(url.pathname)
+    if (request.method === "GET" && wikiMatch) {
+      const md = renderWikiMarkdown(wikiMatch[1]!.toLowerCase(), origin)
+      if (!md) {
+        return new Response("Not Found\n", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } })
+      }
+      return new Response(md, {
+        status: 200,
+        headers: {
+          "content-type": "text/markdown; charset=utf-8",
+          "cache-control": "public, max-age=300",
+          "access-control-allow-origin": "*",
+          "x-content-type-options": "nosniff"
+        }
       })
     }
 
@@ -189,10 +267,25 @@ export default {
     if (env.ASSETS) {
       const assetRes = await env.ASSETS.fetch(request)
       if (assetRes.status !== 404) {
+        if (url.pathname.startsWith("/assets/")) {
+          return withCacheHeaders(assetRes, "public, max-age=31536000, immutable")
+        }
+        const ct = assetRes.headers.get("content-type") ?? ""
+        if (ct.includes("text/html")) {
+          return withCacheHeaders(assetRes, "no-cache, must-revalidate")
+        }
         return assetRes
       }
+      // Never SPA-fallback missing hashed JS/CSS assets to text/html (prevents MIME-type white screen on deploy).
+      if (url.pathname.startsWith("/assets/") || STATIC_ASSET_EXT_RE.test(url.pathname)) {
+        return new Response("Not Found\n", {
+          status: 404,
+          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" }
+        })
+      }
       // SPA fallback fetches "/" (never "/index.html") to prevent 307 redirects on deep links.
-      return env.ASSETS.fetch(new Request(new URL("/", url.origin), request))
+      const spaRes = await env.ASSETS.fetch(new Request(new URL("/", url.origin), request))
+      return withCacheHeaders(spaRes, "no-cache, must-revalidate")
     }
 
     return jsonResponse({ error: "not_found" }, 404)

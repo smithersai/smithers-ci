@@ -2,38 +2,39 @@
 
 Fast kernel-recorded incremental CI, Lighthouse backpressure audits, authenticated Cloud MCP, Obsidian Wiki, and Mythical History built publicly on [Smithers Cloud](https://smithers.sh/smithersai/smithers-ci) with a live [Factory & Lighthouse Dashboard](https://smithers-ci-factory.willcory10.workers.dev).
 
-```mermaid
-flowchart LR
-  Dev["Maintainer, Contributor, or Viewer"] --> UI["smithers.sh/smithersai/smithers-ci"]
-  Agent["BYOA Agent (Claude Code, Codex, Antigravity)"] -->|OAuth 2.1 + Single-Use smo_ Auth| MCP["Cloud MCP (/mcp)"]
-  MCP --> Core["Shared Factory Core (TODOs, Issues, PRs, Stacked Changesets, Wiki, History)"]
-  Core --> Trust{"Execution Trust Policy"}
-  Trust -->|Controlled Sandbox or Maintainer| CacheW["Shared Object Store (build.smithers.sh R/W + Gates)"]
-  Trust -->|Untrusted Community Run| CacheR["Read-Only Cache Hits + Isolated untrusted/ Preview"]
-  CacheW --> Audit["6-Category Lighthouse Backpressure Audit (0-100)"]
-  Audit --> Mirror["GitHub Mirror Merge -> Auto Docs Publish & Release"]
+```text
+  Maintainer / Contributor / Viewer  -->  smithers.sh/smithersai/smithers-ci
+  BYOA Agent (Claude / Codex / AGY)  -->  Cloud MCP (/mcp + single-use smo_)
+                                                |
+                                                v
+                                     Execution Trust Policy
+                     +--------------------------+--------------------------+
+                     |                                                     |
+        Trusted Sandbox / Maintainer                           Untrusted Community Run
+        build.smithers.sh R/W + Gates                          Warm Read-Only Cache Hits
+        trusted/<sha>/ + Auto Release                          untrusted/<actor>/<sha>/
 ```
 
 ## Quickstart
 
 ```sh
-# Install dependencies and verify strict types + security tests
+# Install dependencies and run strict checks
 bun install
 bun run fast-check
 
-# Run the 6-category Lighthouse backpressure audit (HTML + JSON)
+# Run the 6-category Lighthouse backpressure audit
 bun run audit
 
-# Run an untrusted community preview (encouraged, isolated from cache writes)
+# Run an untrusted community preview (isolated)
 bun run audit:untrusted
 
-# Mint a single-use sandbox authentication token (mode-600 file or bootstrap print)
-node --experimental-strip-types bin/smithers-ci.mjs auth mint --subject sandbox:cfbox-01 --tier trusted:sandbox
+# Mint a single-use sandbox token
+bunx smithers-ci auth mint \
+  --subject sandbox:cfbox-01 \
+  --tier trusted:sandbox
 
-# Start the local Streamable HTTP Cloud MCP server
+# Start the local Cloud MCP server or UI
 bun run mcp:serve
-
-# Launch the personalized Factory and Lighthouse Web UI
 bun run dev:ui
 ```
 

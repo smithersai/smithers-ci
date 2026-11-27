@@ -32,8 +32,8 @@ const DIAGRAMS: Readonly<Record<string, DiagramSpec>> = {
       { x: 174, y: 24, w: 142, h: 58, label: "smthrs-observe", sub: "seccomp + bwrap", tone: "info" },
       { x: 348, y: 24, w: 162, h: 58, label: "Shared Object Store", sub: "build.smithers.sh", tone: "pass" },
       { x: 542, y: 24, w: 198, h: 58, label: "Lighthouse Audit", sub: "6 Categories (0-100)", tone: "accent" },
-      { x: 174, y: 116, w: 185, h: 56, label: "Authenticated Cloud MCP", sub: "20 tools + smo_ auth", tone: "info" },
-      { x: 396, y: 116, w: 162, h: 56, label: "Personalized Factory UI", sub: "Maintainer / Contrib / View", tone: "accent" },
+      { x: 174, y: 116, w: 185, h: 56, label: "Authenticated Cloud MCP", sub: "20 tools · smo_ auth", tone: "info" },
+      { x: 382, y: 116, w: 184, h: 56, label: "Personalized Factory UI", sub: "Maintainer · Contrib · View", tone: "accent" },
       { x: 590, y: 116, w: 150, h: 56, label: "GitHub Mirror", sub: "Auto Docs & Release", tone: "pass" }
     ],
     edges: [
@@ -41,8 +41,8 @@ const DIAGRAMS: Readonly<Record<string, DiagramSpec>> = {
       { from: [316, 53], to: [346, 53] },
       { from: [510, 53], to: [540, 53] },
       { from: [428, 82], to: [428, 114] },
-      { from: [359, 144], to: [394, 144] },
-      { from: [558, 144], to: [588, 144] }
+      { from: [359, 144], to: [380, 144] },
+      { from: [566, 144], to: [588, 144] }
     ]
   },
   "kernel-observer": {
@@ -112,15 +112,15 @@ const DIAGRAMS: Readonly<Record<string, DiagramSpec>> = {
     ]
   },
   "lighthouse-backpressure": {
-    viewBox: "0 0 760 185",
+    viewBox: "0 0 780 185",
     title: "Six-Category Lighthouse Backpressure Rubric",
     nodes: [
-      { x: 18, y: 20, w: 224, h: 48, label: "Correctness & Determinism", sub: "Typecheck + Tests + 0 Mismatches", tone: "pass" },
-      { x: 268, y: 20, w: 224, h: 48, label: "Cache & Speed", sub: "build.smithers.sh + 4.4x Replay", tone: "pass" },
-      { x: 518, y: 20, w: 224, h: 48, label: "Security & Trust Isolation", sub: "0 Cache Poisoning + Single-Use Auth", tone: "pass" },
-      { x: 18, y: 86, w: 224, h: 48, label: "Formal & Fuzz Assurance", sub: "387 Lean 4 Theorems + 40 Fuzz Suites", tone: "info" },
-      { x: 268, y: 86, w: 224, h: 48, label: "Wiki & Docs Freshness", sub: "0 Broken Links + Visual Diagrams", tone: "info" },
-      { x: 518, y: 86, w: 224, h: 48, label: "Release & Cloud Readiness", sub: "3 Audiences + Mirror Release + MCP", tone: "accent" }
+      { x: 16, y: 20, w: 236, h: 50, label: "Correctness & Determinism", sub: "Typecheck · Tests · 0 Mismatches", tone: "pass" },
+      { x: 272, y: 20, w: 236, h: 50, label: "Cache & Speed", sub: "build.smithers.sh · 4.4x Replay", tone: "pass" },
+      { x: 528, y: 20, w: 236, h: 50, label: "Security & Trust Isolation", sub: "0 Poisoning · Single-Use Auth", tone: "pass" },
+      { x: 16, y: 88, w: 236, h: 50, label: "Formal & Fuzz Assurance", sub: "387 Lean 4 · 40 Fuzz Suites", tone: "info" },
+      { x: 272, y: 88, w: 236, h: 50, label: "Wiki & Docs Freshness", sub: "0 Broken Links · SVG Diagrams", tone: "info" },
+      { x: 528, y: 88, w: 236, h: 50, label: "Release & Cloud Readiness", sub: "3 Audiences · Auto Mirror · MCP", tone: "accent" }
     ],
     edges: []
   },

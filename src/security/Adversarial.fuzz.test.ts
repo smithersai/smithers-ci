@@ -64,8 +64,11 @@ function createMockDurableSqlStorage() {
   const sql: SqlStorageLike = {
     exec(query: string, ...b: ReadonlyArray<unknown>) {
       const q = query.trim().replace(/\s+/g, " ")
-      if (q.startsWith("CREATE TABLE")) {
+      if (q.startsWith("CREATE TABLE") || q.startsWith("CREATE UNIQUE INDEX") || q.startsWith("DELETE FROM waitlist_requests") || q.startsWith("UPDATE waitlist_requests")) {
         return { toArray: () => [], rowsWritten: 0 }
+      }
+      if (q.startsWith("SELECT repo, created_at FROM waitlist_requests")) {
+        return { toArray: () => Array.from(tables.waitlist_requests.values()), rowsWritten: 0 }
       }
       if (q.startsWith("INSERT OR REPLACE INTO one_time_tokens")) {
         tables.one_time_tokens.set(String(b[0]), {

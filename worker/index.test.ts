@@ -145,6 +145,28 @@ describe("Cloudflare Worker + FactoryHubDO (Factory UI + Live Cloud MCP + One-Ti
       }
     })
     expect(res.status).toBe(200)
+    expect(res.headers.get("cache-control")).toBe("no-cache, must-revalidate")
     expect(requestedPaths).toEqual(["/smithersai/smithers-ci/audit", "/"])
+
+    // Missing hashed JS bundle MUST return 404 (never 200 text/html SPA fallback)
+    const missingAsset = await worker.fetch(new Request("https://smithers.sh/assets/stale-hash.js"), {
+      ASSETS: {
+        async fetch() {
+          return new Response("Not Found", { status: 404 })
+        }
+      }
+    })
+    expect(missingAsset.status).toBe(404)
+
+    // /llms.txt and /wiki/:slug.md serve clean Markdown for smithers.sh Docs integration
+    const llms = await worker.fetch(new Request("https://smithers.sh/llms.txt"), {})
+    expect(llms.status).toBe(200)
+    const llmsText = await llms.text()
+    expect(llmsText).toContain("/wiki/trust-and-isolation.md")
+
+    const wikiMd = await worker.fetch(new Request("https://smithers.sh/wiki/trust-and-isolation.md"), {})
+    expect(wikiMd.status).toBe(200)
+    expect(wikiMd.headers.get("content-type")).toContain("text/markdown")
+    expect(await wikiMd.text()).toContain("Execution Trust")
   })
 })
