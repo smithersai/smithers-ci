@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-11-27T08:02:47.149Z",
+  "generatedAt": "2026-11-27T08:38:08.485Z",
   "repository": "smithersai/smithers-ci",
   "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
   "execution": {
@@ -14,7 +14,8 @@
     "trusted": true,
     "downgraded": false,
     "downgradeReason": null,
-    "verifiedAt": "2026-11-27T08:02:47.146Z"
+    "verifiedAt": "2026-11-27T08:38:08.482Z",
+    "expiresAt": "2026-11-27T08:48:08.480Z"
   },
   "policy": {
     "allowExecution": true,
@@ -33,6 +34,17 @@
     "status": "passed",
     "trustTier": "trusted:sandbox",
     "reason": "Gate lighthouse-backpressure verified by trusted:sandbox (cfbox-gate-04)."
+  },
+  "gateReceipt": {
+    "repository": "smithersai/smithers-ci",
+    "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
+    "gate": "lighthouse-backpressure",
+    "score": 100,
+    "passed": true,
+    "satisfied": true,
+    "trustTier": "trusted:sandbox",
+    "actor": "cfbox-gate-04",
+    "verifiedAt": "2026-11-27T08:38:08.482Z"
   },
   "overallScore": 100,
   "overallRating": "pass",
@@ -70,11 +82,11 @@
           "status": "pass",
           "score": 100,
           "weight": 4,
-          "displayValue": "22/22 passed",
-          "durationMs": 586,
+          "displayValue": "35/35 passed",
+          "durationMs": 740,
           "evidence": [
             "Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP",
-            "Observed 22 passing and 0 failing tests"
+            "Observed 35 passing and 0 failing tests"
           ]
         },
         {
@@ -236,10 +248,10 @@
           "durationMs": 12,
           "evidence": [
             "Shared Object Store Cache Write (/ac, /cas) -> ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
-            "Trusted Artifact Pointer Publication -> ObjectStore.putArtifact namespace isolation",
-            "Merge / Release Gate Satisfaction -> ExecutionTrust.evaluateGate",
-            "One-Time Sandbox Auth Token Minting -> OneTimeTokenStore.mint",
-            "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -> ExecutionTrust.authorizeAction + McpServer guard"
+            "Trusted Artifact Pointer Publication -> McpServer destination scope check + ObjectStore untrusted-cas isolation",
+            "Merge / Release Gate Satisfaction -> ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification",
+            "One-Time Sandbox Auth Token Minting & PKCE Exchange -> OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS",
+            "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -> ExecutionTrust.authorizeAction (default-deny) + McpServer guard"
           ]
         }
       ]
@@ -405,10 +417,10 @@
           "status": "pass",
           "score": 100,
           "weight": 3,
-          "displayValue": "18 tools live",
+          "displayValue": "20 tools live",
           "durationMs": 16,
           "evidence": [
-            "Streamable HTTP MCP server with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+            "Streamable HTTP MCP server exposes 20 tools with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
           ]
         }
       ]
@@ -463,34 +475,34 @@
       "privilegedStep": "Shared Object Store Cache Write (/ac, /cas)",
       "originInput": "HMAC-signed ExecutionClaim + server-minted cache:write scope",
       "trustBoundary": "ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
-      "enforcementMechanism": "Constant-time HMAC verification + tier check (trusted:maintainer | trusted:sandbox only)",
+      "enforcementMechanism": "Constant-time HMAC verification + exhaustive tier check (trusted:maintainer | trusted:sandbox only)",
       "untrustedCanBypass": false
     },
     {
       "privilegedStep": "Trusted Artifact Pointer Publication",
-      "originInput": "Verified ExecutionClaim + SHA-256 content digest",
-      "trustBoundary": "ObjectStore.putArtifact namespace isolation",
-      "enforcementMechanism": "Untrusted writes routed exclusively to untrusted/<actor>/<sha>/, never trusted/",
+      "originInput": "Verified ExecutionClaim + artifact:write:trusted scope + SHA-256 content digest",
+      "trustBoundary": "McpServer destination scope check + ObjectStore untrusted-cas isolation",
+      "enforcementMechanism": "Untrusted writes routed exclusively to untrusted-cas/ and untrusted/<actor>/<sha>/, never cas/ or trusted/",
       "untrustedCanBypass": false
     },
     {
       "privilegedStep": "Merge / Release Gate Satisfaction",
-      "originInput": "AuditEngine report + verified ExecutionClaim",
-      "trustBoundary": "ExecutionTrust.evaluateGate",
-      "enforcementMechanism": "Hard returns satisfied: false and status: untrusted_preview for untrusted:community",
+      "originInput": "AuditEngine commit-bound GateReceipt + verified ExecutionClaim",
+      "trustBoundary": "ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification",
+      "enforcementMechanism": "Requires trusted GateReceipt matching exact repository and head commit SHA; untrusted runs stay untrusted_preview",
       "untrustedCanBypass": false
     },
     {
-      "privilegedStep": "One-Time Sandbox Auth Token Minting",
-      "originInput": "Maintainer identity + scope request",
-      "trustBoundary": "OneTimeTokenStore.mint",
-      "enforcementMechanism": "Scope intersection strips person-only actions and strips cache:write for untrusted tiers",
+      "privilegedStep": "One-Time Sandbox Auth Token Minting & PKCE Exchange",
+      "originInput": "Maintainer identity + allowlisted scopes + RFC 7636 S256 challenge",
+      "trustBoundary": "OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS",
+      "enforcementMechanism": "Single-use conditional UPDATE burn + atomic lease insert; scope intersection strips person-only and untrusted write scopes",
       "untrustedCanBypass": false
     },
     {
       "privilegedStep": "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write)",
       "originInput": "Authenticated session callerKind + maintainer role",
-      "trustBoundary": "ExecutionTrust.authorizeAction + McpServer guard",
+      "trustBoundary": "ExecutionTrust.authorizeAction (default-deny) + McpServer guard",
       "enforcementMechanism": "403 person_only for all agent and sandbox tokens regardless of underlying user role",
       "untrustedCanBypass": false
     }

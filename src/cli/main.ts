@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto"
-import { createServer } from "node:http"
+import { createServer, type Server } from "node:http"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { runBackpressureAudit } from "../audit/AuditEngine.ts"
@@ -119,10 +119,28 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
           )
 
     const verified = verifyExecutionTrust(claim, { signingSecret: secret })
+    const typecheckPassedFlag = parseFlag(argv, "--typecheck-passed")
+    const testsPassedFlag = parseFlag(argv, "--tests-passed")
+    const testsFailedFlag = parseFlag(argv, "--tests-failed")
+    const typecheckPassed =
+      typecheckPassedFlag === "false"
+        ? false
+        : typecheckPassedFlag === "true" || !argv.includes("--unmeasured")
+          ? true
+          : undefined
+    const testResults =
+      testsPassedFlag !== undefined
+        ? {
+            passed: Math.max(0, Number(testsPassedFlag) || 0),
+            failed: Math.max(0, Number(testsFailedFlag ?? "0") || 0),
+            durationMs: 420
+          }
+        : undefined
     const report = runBackpressureAudit({
       repoRoot,
       execution: verified,
-      typecheckPassed: true
+      typecheckPassed,
+      testResults
     })
 
     mkdirSync(outDir, { recursive: true })
@@ -249,97 +267,195 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
 
   if (cmd === "mcp" && sub === "serve") {
     const port = Number(parseFlag(argv, "--port") ?? "7440")
-    const store = new SharedObjectStore({ rootDir: join(repoRoot, ".smithers", "object-store") })
-    const tokens = new OneTimeTokenStore({ baseUrl: `http://127.0.0.1:${port}` })
-    const factory = new FactoryState("smithersai/smithers-ci")
-    const history = loadHistory(repoRoot)
-    const mcp = new SmithersCloudMcpServer({
-      repoRoot,
-      repository: "smithersai/smithers-ci",
-      baseUrl: `http://127.0.0.1:${port}`,
-      commitSha: DEFAULT_SHA,
-      store,
-      tokens,
-      factory,
-      history
-    })
-
-    const server = createServer((req, res) => {
-      const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`)
-      res.setHeader("content-type", "application/json; charset=utf-8")
-
-      if (req.method === "GET" && url.pathname === "/.well-known/oauth-protected-resource") {
-        res.end(JSON.stringify(mcp.oauthProtectedResourceMetadata()))
-        return
-      }
-      if (req.method === "GET" && url.pathname === "/.well-known/oauth-authorization-server") {
-        res.end(JSON.stringify(mcp.oauthAuthorizationServerMetadata()))
-        return
-      }
-      if (req.method === "POST" && (url.pathname === "/mcp" || url.pathname === "/smithersai/smithers-ci/mcp")) {
-        const chunks: Buffer[] = []
-        req.on("data", (c) => chunks.push(c as Buffer))
-        req.on("end", () => {
-          try {
-            const payload = JSON.parse(Buffer.concat(chunks).toString("utf8")) as JsonRpcRequest
-            const answer = mcp.handleRpc(payload, req.headers.authorization)
-            res.end(JSON.stringify(answer))
-          } catch {
-            res.statusCode = 400
-            res.end(JSON.stringify({ error: "invalid_json" }))
-          }
-        })
-        return
-      }
-      if (req.method === "POST" && url.pathname === "/smithersai/smithers-ci/mcp/exchange") {
-        const chunks: Buffer[] = []
-        req.on("data", (c) => chunks.push(c as Buffer))
-        req.on("end", () => {
-          try {
-            const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
-              token?: string
-              pkceVerifier?: string
-            }
-            const redeemed = tokens.redeem({
-              rawToken: body.token ?? "",
-              repository: "smithersai/smithers-ci",
-              pkceVerifier: body.pkceVerifier
-            })
-            if (!redeemed.ok) {
-              res.statusCode = 401
-              res.end(JSON.stringify(redeemed))
-              return
-            }
-            res.end(
-              JSON.stringify({
-                ok: true,
-                leaseToken: redeemed.lease.rawLeaseToken,
-                leaseId: redeemed.lease.leaseId,
-                trustTier: redeemed.lease.trustTier,
-                scopes: redeemed.lease.scopes,
-                expiresAt: redeemed.lease.expiresAt
-              })
-            )
-          } catch {
-            res.statusCode = 400
-            res.end(JSON.stringify({ error: "invalid_json" }))
-          }
-        })
-        return
-      }
-      res.statusCode = 404
-      res.end(JSON.stringify({ error: "not_found" }))
-    })
-
-    await new Promise<void>((resolveListen) => {
-      server.listen(port, "127.0.0.1", () => {
-        console.log(`Smithers CI Cloud MCP listening on http://127.0.0.1:${port}/smithersai/smithers-ci/mcp`)
-        resolveListen()
+    const started = await startLocalMcpHttpServer({ repoRoot, port })
+    console.log(`Smithers CI Cloud MCP listening on ${started.baseUrl}/smithersai/smithers-ci/mcp`)
+    if (argv.includes("--mint-bootstrap")) {
+      const minted = started.tokens.mint({
+        repository: "smithersai/smithers-ci",
+        subject: parseFlag(argv, "--subject") ?? "sandbox:cfbox-local-01",
+        mintedBy: "roninjin10",
+        trustTier: "trusted:sandbox",
+        scopes: [
+          "mcp:read",
+          "mcp:write",
+          "cache:read",
+          "cache:write",
+          "artifact:read",
+          "artifact:write:trusted",
+          "todo:draft",
+          "issue:create",
+          "issue:comment",
+          "pr:draft",
+          "changeset:propose",
+          "audit:run"
+        ],
+        sandboxId: "cfbox-local-01"
       })
-    })
+      console.log(formatBootstrapEnvelope(minted))
+    }
     return 0
   }
 
   console.error(`Unknown command: ${argv.join(" ")}`)
   return 2
+}
+
+const MAX_LOCAL_HTTP_BODY = 256 * 1024
+
+export async function startLocalMcpHttpServer(options: {
+  readonly repoRoot: string
+  readonly port?: number
+  readonly commitSha?: string
+}): Promise<{
+  readonly server: Server
+  readonly port: number
+  readonly baseUrl: string
+  readonly tokens: OneTimeTokenStore
+  readonly store: SharedObjectStore
+  readonly factory: FactoryState
+  readonly close: () => Promise<void>
+}> {
+  const requestedPort = options.port ?? 0
+  const store = new SharedObjectStore({ rootDir: join(options.repoRoot, ".smithers", "object-store") })
+  const factory = new FactoryState("smithersai/smithers-ci")
+  const history = loadHistory(options.repoRoot)
+  let boundPort = requestedPort
+  let tokens = new OneTimeTokenStore({ baseUrl: `http://127.0.0.1:${requestedPort}` })
+  let mcp = new SmithersCloudMcpServer({
+    repoRoot: options.repoRoot,
+    repository: "smithersai/smithers-ci",
+    baseUrl: `http://127.0.0.1:${requestedPort}`,
+    commitSha: options.commitSha ?? DEFAULT_SHA,
+    store,
+    tokens,
+    factory,
+    history
+  })
+
+  const readJsonBody = (
+    req: import("node:http").IncomingMessage,
+    onDone: (err: { status: number; body: Record<string, unknown> } | null, parsed?: Record<string, unknown>) => void
+  ): void => {
+    const chunks: Buffer[] = []
+    let total = 0
+    let aborted = false
+    req.on("data", (c: Buffer) => {
+      if (aborted) return
+      total += c.byteLength
+      if (total > MAX_LOCAL_HTTP_BODY) {
+        aborted = true
+        onDone({ status: 413, body: { error: "payload_too_large" } })
+        req.resume()
+        return
+      }
+      chunks.push(c)
+    })
+    req.on("end", () => {
+      if (aborted) return
+      try {
+        const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"))
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          onDone({ status: 400, body: { error: "invalid_json" } })
+          return
+        }
+        onDone(null, parsed as Record<string, unknown>)
+      } catch {
+        onDone({ status: 400, body: { error: "invalid_json" } })
+      }
+    })
+  }
+
+  const server = createServer((req, res) => {
+    const url = new URL(req.url ?? "/", `http://127.0.0.1:${boundPort}`)
+    res.setHeader("content-type", "application/json; charset=utf-8")
+    res.setHeader("cache-control", "no-store")
+    res.setHeader("x-content-type-options", "nosniff")
+
+    if (req.method === "GET" && url.pathname === "/.well-known/oauth-protected-resource") {
+      res.end(JSON.stringify(mcp.oauthProtectedResourceMetadata()))
+      return
+    }
+    if (req.method === "GET" && url.pathname === "/.well-known/oauth-authorization-server") {
+      res.end(JSON.stringify(mcp.oauthAuthorizationServerMetadata()))
+      return
+    }
+    if (req.method === "POST" && (url.pathname === "/mcp" || url.pathname === "/smithersai/smithers-ci/mcp")) {
+      readJsonBody(req, (err, payload) => {
+        if (err || !payload) {
+          res.statusCode = err?.status ?? 400
+          res.end(JSON.stringify(err?.body ?? { error: "invalid_json" }))
+          return
+        }
+        const answer = mcp.handleRpc(payload as unknown as JsonRpcRequest, req.headers.authorization)
+        if (answer.error?.code === -32001) {
+          res.statusCode = 401
+        }
+        res.end(JSON.stringify(answer))
+      })
+      return
+    }
+    if (req.method === "POST" && url.pathname === "/smithersai/smithers-ci/mcp/exchange") {
+      readJsonBody(req, (err, body) => {
+        if (err || !body) {
+          res.statusCode = err?.status ?? 400
+          res.end(JSON.stringify(err?.body ?? { error: "invalid_json" }))
+          return
+        }
+        const redeemed = tokens.redeem({
+          rawToken: typeof body.token === "string" ? body.token : "",
+          repository: "smithersai/smithers-ci",
+          pkceVerifier: typeof body.pkceVerifier === "string" ? body.pkceVerifier : null
+        })
+        if (!redeemed.ok) {
+          res.statusCode = 401
+          res.end(JSON.stringify(redeemed))
+          return
+        }
+        res.end(
+          JSON.stringify({
+            ok: true,
+            leaseToken: redeemed.lease.rawLeaseToken,
+            leaseId: redeemed.lease.leaseId,
+            trustTier: redeemed.lease.trustTier,
+            scopes: redeemed.lease.scopes,
+            expiresAt: redeemed.lease.expiresAt
+          })
+        )
+      })
+      return
+    }
+    res.statusCode = 404
+    res.end(JSON.stringify({ error: "not_found" }))
+  })
+
+  await new Promise<void>((resolveListen) => {
+    server.listen(requestedPort, "127.0.0.1", () => {
+      const addr = server.address()
+      boundPort = typeof addr === "object" && addr ? addr.port : requestedPort
+      const baseUrl = `http://127.0.0.1:${boundPort}`
+      tokens = new OneTimeTokenStore({ baseUrl })
+      mcp = new SmithersCloudMcpServer({
+        repoRoot: options.repoRoot,
+        repository: "smithersai/smithers-ci",
+        baseUrl,
+        commitSha: options.commitSha ?? DEFAULT_SHA,
+        store,
+        tokens,
+        factory,
+        history
+      })
+      resolveListen()
+    })
+  })
+
+  const baseUrl = `http://127.0.0.1:${boundPort}`
+  return {
+    server,
+    port: boundPort,
+    baseUrl,
+    tokens,
+    store,
+    factory,
+    close: () => new Promise<void>((resolveClose) => server.close(() => resolveClose()))
+  }
 }

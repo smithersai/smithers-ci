@@ -1,7 +1,9 @@
 import {
+  type GateReceipt,
   type TrustTier,
   type VerifiedExecution,
-  authorizeAction
+  authorizeAction,
+  verifyGateReceipt
 } from "../trust/ExecutionTrust.ts"
 
 export interface TodoItem {
@@ -39,6 +41,7 @@ export interface ChangesetRecord {
   readonly trustTier: TrustTier
   readonly auditScore: number
   readonly gateSatisfied: boolean
+  readonly gateReceipt: GateReceipt | null
   readonly state: "draft" | "review" | "ready" | "merged"
   readonly diffSummary: string
   readonly updatedAt: string
@@ -50,6 +53,7 @@ export interface PullRequestRecord {
   readonly body: string
   readonly branch: string
   readonly baseBranch: string
+  readonly headCommitSha: string
   readonly author: string
   readonly authorContributions: number
   readonly state: "open" | "merged" | "closed"
@@ -57,6 +61,7 @@ export interface PullRequestRecord {
   readonly trustTier: TrustTier
   readonly auditScore: number
   readonly gateSatisfied: boolean
+  readonly gateReceipt: GateReceipt | null
   readonly mirrorSyncedToGithub: boolean
   readonly createdAt: string
 }
@@ -90,6 +95,27 @@ function formatAttribution(execution: VerifiedExecution): string {
   return execution.callerKind === "person" ? execution.actor : `${execution.actor} (${execution.callerKind})`
 }
 
+function seededReceipt(
+  repository: string,
+  commitSha: string,
+  score: number,
+  trustTier: "trusted:maintainer" | "trusted:sandbox",
+  actor: string,
+  verifiedAt: string
+): GateReceipt {
+  return {
+    repository,
+    commitSha,
+    gate: "lighthouse-backpressure",
+    score,
+    passed: true,
+    satisfied: true,
+    trustTier,
+    actor,
+    verifiedAt
+  }
+}
+
 /**
  * Unified local-first Factory core shared across all 4 Smithers clients:
  * 1. Cloud MCP Server
@@ -104,6 +130,7 @@ export class FactoryState {
   private readonly changesets: ChangesetRecord[]
   private readonly pulls: PullRequestRecord[]
   private readonly runs: FactoryRunRecord[]
+  private nextTodoNumber: number
   private nextIssueNumber: number
   private nextPrNumber: number
 
@@ -227,6 +254,14 @@ export class FactoryState {
         trustTier: "trusted:sandbox",
         auditScore: 100,
         gateSatisfied: true,
+        gateReceipt: seededReceipt(
+          repository,
+          "46412bca49c3a0f1234567890abcdef123456789",
+          100,
+          "trusted:sandbox",
+          "cfbox-gate-04",
+          "2026-11-26T23:38:00.000Z"
+        ),
         state: "merged",
         diffSummary: "+420 -0 across src/trust/ExecutionTrust.ts, src/store/ObjectStore.ts",
         updatedAt: "2026-11-26T23:38:00.000Z"
@@ -242,6 +277,14 @@ export class FactoryState {
         trustTier: "trusted:sandbox",
         auditScore: 99,
         gateSatisfied: true,
+        gateReceipt: seededReceipt(
+          repository,
+          "9e0efd0d871f1234567890abcdef1234567890ab",
+          99,
+          "trusted:sandbox",
+          "cfbox-gate-04",
+          "2026-11-26T23:41:00.000Z"
+        ),
         state: "ready",
         diffSummary: "+610 -0 across src/audit/AuditEngine.ts, src/audit/LighthouseHtml.ts",
         updatedAt: "2026-11-26T23:41:00.000Z"
@@ -257,6 +300,14 @@ export class FactoryState {
         trustTier: "trusted:sandbox",
         auditScore: 98,
         gateSatisfied: true,
+        gateReceipt: seededReceipt(
+          repository,
+          "1ac184541b6d1234567890abcdef1234567890cd",
+          98,
+          "trusted:sandbox",
+          "cfbox-gate-04",
+          "2026-11-26T23:44:00.000Z"
+        ),
         state: "review",
         diffSummary: "+540 -0 across src/auth/OneTimeToken.ts, src/mcp/McpServer.ts",
         updatedAt: "2026-11-26T23:44:00.000Z"
@@ -272,6 +323,7 @@ export class FactoryState {
         trustTier: "untrusted:community",
         auditScore: 96,
         gateSatisfied: false,
+        gateReceipt: null,
         state: "review",
         diffSummary: "+84 -12 (untrusted community preview awaiting controlled sandbox rerun)",
         updatedAt: "2026-11-26T23:47:00.000Z"
@@ -285,6 +337,7 @@ export class FactoryState {
         body: "Stacks cs-01 through cs-03 to make smithers-ci a public flagship factory on smithers.sh/smithersai/smithers-ci.",
         branch: "stack/03-cloud-mcp-and-ott",
         baseBranch: "main",
+        headCommitSha: "1ac184541b6d1234567890abcdef1234567890cd",
         author: "roninjin10",
         authorContributions: 142,
         state: "open",
@@ -292,6 +345,14 @@ export class FactoryState {
         trustTier: "trusted:sandbox",
         auditScore: 99,
         gateSatisfied: true,
+        gateReceipt: seededReceipt(
+          repository,
+          "1ac184541b6d1234567890abcdef1234567890cd",
+          99,
+          "trusted:sandbox",
+          "cfbox-gate-04",
+          "2026-11-26T23:44:00.000Z"
+        ),
         mirrorSyncedToGithub: true,
         createdAt: "2026-11-26T23:44:00.000Z"
       },
@@ -301,6 +362,7 @@ export class FactoryState {
         body: "Community PR tested locally with untrusted preview mode (96/100). Ready for maintainer controlled-sandbox re-verification.",
         branch: "community/zig-static-archive-hints",
         baseBranch: "main",
+        headCommitSha: "572c6e21abcd1234567890abcdef1234567890ef",
         author: "alice-dev",
         authorContributions: 3,
         state: "open",
@@ -308,6 +370,7 @@ export class FactoryState {
         trustTier: "untrusted:community",
         auditScore: 96,
         gateSatisfied: false,
+        gateReceipt: null,
         mirrorSyncedToGithub: true,
         createdAt: "2026-11-26T23:47:00.000Z"
       }
@@ -352,6 +415,7 @@ export class FactoryState {
       }
     ]
 
+    this.nextTodoNumber = 5
     this.nextIssueNumber = 5
     this.nextPrNumber = 103
   }
@@ -369,7 +433,7 @@ export class FactoryState {
       throw new FactoryActionError("invalid", "TODO title must be 3 to 160 characters", 400)
     }
     const item: TodoItem = {
-      id: `todo-${this.todos.length + 1}`,
+      id: `todo-${this.nextTodoNumber++}`,
       title,
       body: input.body.trim(),
       status: "draft",
@@ -456,11 +520,17 @@ export class FactoryState {
       readonly branch: string
       readonly parentId?: string | null
       readonly diffSummary: string
-      readonly auditScore?: number
+      readonly gateReceipt?: GateReceipt | null
     },
     execution: VerifiedExecution
   ): ChangesetRecord {
-    const score = input.auditScore ?? 95
+    const receiptValid =
+      execution.trusted &&
+      verifyGateReceipt(input.gateReceipt, {
+        repository: this.repository,
+        commitSha: execution.commitSha
+      })
+    const score = receiptValid && input.gateReceipt ? input.gateReceipt.score : 0
     const record: ChangesetRecord = {
       id: `cs-${String(this.changesets.length + 1).padStart(2, "0")}`,
       stackPosition: this.changesets.length + 1,
@@ -471,8 +541,9 @@ export class FactoryState {
       author: formatAttribution(execution),
       trustTier: execution.effectiveTier,
       auditScore: score,
-      gateSatisfied: execution.trusted && score >= 90,
-      state: execution.trusted ? "review" : "draft",
+      gateSatisfied: receiptValid,
+      gateReceipt: receiptValid && input.gateReceipt ? input.gateReceipt : null,
+      state: receiptValid ? "review" : "draft",
       diffSummary: input.diffSummary.trim(),
       updatedAt: new Date().toISOString()
     }
@@ -495,24 +566,32 @@ export class FactoryState {
       readonly branch: string
       readonly baseBranch?: string
       readonly changesetIds?: ReadonlyArray<string>
-      readonly auditScore?: number
+      readonly gateReceipt?: GateReceipt | null
     },
     execution: VerifiedExecution
   ): PullRequestRecord {
-    const score = input.auditScore ?? 95
+    const receiptValid =
+      execution.trusted &&
+      verifyGateReceipt(input.gateReceipt, {
+        repository: this.repository,
+        commitSha: execution.commitSha
+      })
+    const score = receiptValid && input.gateReceipt ? input.gateReceipt.score : 0
     const pr: PullRequestRecord = {
       number: this.nextPrNumber++,
       title: input.title.trim(),
       body: input.body.trim(),
       branch: input.branch.trim(),
       baseBranch: input.baseBranch ?? "main",
+      headCommitSha: execution.commitSha,
       author: formatAttribution(execution),
       authorContributions: execution.trusted ? 10 : 1,
       state: "open",
       changesetIds: input.changesetIds ?? [],
       trustTier: execution.effectiveTier,
       auditScore: score,
-      gateSatisfied: execution.trusted && score >= 90,
+      gateSatisfied: receiptValid,
+      gateReceipt: receiptValid && input.gateReceipt ? input.gateReceipt : null,
       mirrorSyncedToGithub: true,
       createdAt: new Date().toISOString()
     }
@@ -520,7 +599,11 @@ export class FactoryState {
     return pr
   }
 
-  mergePull(number: number, execution: VerifiedExecution): PullRequestRecord {
+  mergePull(
+    number: number,
+    execution: VerifiedExecution,
+    expectedHeadSha?: string
+  ): PullRequestRecord {
     const auth = authorizeAction(execution, "pr/merge")
     if (!auth.allowed) {
       throw new FactoryActionError(
@@ -534,10 +617,22 @@ export class FactoryState {
       throw new FactoryActionError("not_found", `Pull request #${number} not found`, 404)
     }
     const pr = this.pulls[idx]!
-    if (!pr.gateSatisfied) {
+    const targetSha = expectedHeadSha ? expectedHeadSha.trim().toLowerCase() : pr.headCommitSha
+    if (expectedHeadSha && targetSha !== pr.headCommitSha.toLowerCase()) {
       throw new FactoryActionError(
         "gate_not_satisfied",
-        `PR #${number} cannot merge until a trusted sandbox or maintainer satisfies the backpressure gate (current trust: ${pr.trustTier}).`,
+        `PR #${number} head commit mismatch: expected ${targetSha} but PR head is ${pr.headCommitSha}.`,
+        409
+      )
+    }
+    const receiptOk = verifyGateReceipt(pr.gateReceipt, {
+      repository: this.repository,
+      commitSha: targetSha
+    })
+    if (!pr.gateSatisfied || !receiptOk) {
+      throw new FactoryActionError(
+        "gate_not_satisfied",
+        `PR #${number} cannot merge until a verified trusted sandbox or maintainer GateReceipt matches head commit ${targetSha} (current trust: ${pr.trustTier}).`,
         409
       )
     }

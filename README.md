@@ -1,6 +1,6 @@
 # Smithers CI
 
-Fast kernel-recorded incremental CI, Lighthouse backpressure audits, authenticated Cloud MCP, Obsidian Wiki, and Mythical History built publicly on [Smithers Cloud](https://smithers.sh/smithersai/smithers-ci).
+Fast kernel-recorded incremental CI, Lighthouse backpressure audits, authenticated Cloud MCP, Obsidian Wiki, and Mythical History built publicly on [Smithers Cloud](https://smithers.sh/smithersai/smithers-ci) with a live [Factory & Lighthouse Dashboard](https://smithers-ci-factory.willcory10.workers.dev).
 
 ```mermaid
 flowchart LR

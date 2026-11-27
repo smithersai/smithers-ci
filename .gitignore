@@ -4,6 +4,7 @@ dist/
 .smithers/object-store/
 .smithers/reports/
 .smithers/reports-untrusted/
+.smithers/reviews/
 .smithers/tokens/
 .flows/
 .wrangler/

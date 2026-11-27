@@ -4,7 +4,9 @@ import { inventoryGithubWorkflows } from "../ci/WorkflowInventory.ts"
 import {
   ROOT_INPUT_TRACING_TABLE,
   type GateCheckResult,
+  type GateReceipt,
   type VerifiedExecution,
+  createGateReceipt,
   evaluateExecutionPolicy,
   evaluateGate
 } from "../trust/ExecutionTrust.ts"
@@ -61,6 +63,7 @@ export interface BackpressureAuditReport {
   readonly execution: VerifiedExecution
   readonly policy: ReturnType<typeof evaluateExecutionPolicy>
   readonly gate: GateCheckResult
+  readonly gateReceipt: GateReceipt
   readonly overallScore: number
   readonly overallRating: "pass" | "average" | "fail"
   readonly categories: ReadonlyArray<AuditCategorySummary>
@@ -184,20 +187,29 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   const audits: AuditCheck[] = []
 
   // --- 1. Correctness & Determinism ---
-  const typecheckOk = options.typecheckPassed ?? existsSync(join(root, "tsconfig.json"))
+  const typecheckMeasured = typeof options.typecheckPassed === "boolean"
+  const typecheckOk = options.typecheckPassed === true
   audits.push({
     id: "ts-strict-typecheck",
     category: "correctness",
     title: "Strict TypeScript Typecheck",
     description: "Every core module, worker route, and factory UI file compiles with strict mode enabled.",
-    status: typecheckOk ? "pass" : "fail",
-    score: typecheckOk ? 100 : 0,
+    status: !typecheckMeasured ? "warn" : typecheckOk ? "pass" : "fail",
+    score: !typecheckMeasured ? 65 : typecheckOk ? 100 : 0,
     weight: 3,
-    displayValue: typecheckOk ? "0 errors" : "Type errors detected",
+    displayValue: !typecheckMeasured
+      ? "Not measured"
+      : typecheckOk
+        ? "0 errors"
+        : "Type errors detected",
     durationMs: 420,
     evidence: [
       "tsconfig.json strict: true, noUncheckedIndexedAccess: true",
-      typecheckOk ? "tsc --noEmit exited 0" : "tsc --noEmit failed"
+      !typecheckMeasured
+        ? "Pass explicit typecheckPassed from `tsc --noEmit` to clear this check"
+        : typecheckOk
+          ? "tsc --noEmit exited 0"
+          : "tsc --noEmit failed"
     ]
   })
 
@@ -205,20 +217,20 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   const testsFailed = options.testResults?.failed ?? 0
   const testTotal = testsPassed + testsFailed
   const testScore =
-    testTotal === 0 ? 90 : testsFailed === 0 ? 100 : Math.max(0, Math.round((testsPassed / testTotal) * 100))
+    testTotal === 0 ? 70 : testsFailed === 0 ? 100 : Math.max(0, Math.round((testsPassed / testTotal) * 100))
   audits.push({
     id: "unit-integration-tests",
     category: "correctness",
     title: "Unit, Security & Protocol Suites",
     description: "Verifies trust isolation, one-time tokens, CAS integrity, audit scoring, wiki, history, and MCP tools.",
-    status: testsFailed === 0 ? "pass" : "fail",
+    status: testTotal === 0 ? "warn" : testsFailed === 0 ? "pass" : "fail",
     score: testScore,
     weight: 4,
-    displayValue: testTotal > 0 ? `${testsPassed}/${testTotal} passed` : "Suite configured",
+    displayValue: testTotal > 0 ? `${testsPassed}/${testTotal} passed` : "Not measured",
     durationMs: options.testResults?.durationMs ?? 890,
     evidence: [
       `Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP`,
-      testTotal > 0 ? `Observed ${testsPassed} passing and ${testsFailed} failing tests` : "Run `bun run test` for live counts"
+      testTotal > 0 ? `Observed ${testsPassed} passing and ${testsFailed} failing tests` : "Run `bun run test` and supply observed counts to satisfy this check"
     ]
   })
 
@@ -573,11 +585,11 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     status: mcpExists ? "pass" : "fail",
     score: mcpExists ? 100 : 0,
     weight: 3,
-    displayValue: mcpExists ? "18 tools live" : "MCP missing",
+    displayValue: mcpExists ? "20 tools live" : "MCP missing",
     durationMs: 16,
     evidence: [
       mcpExists
-        ? "Streamable HTTP MCP server with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+        ? "Streamable HTTP MCP server exposes 20 tools with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
         : "Missing src/mcp/McpServer.ts"
     ]
   })
@@ -605,8 +617,9 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   const warnings = audits.filter((a) => a.status === "warn").length
   const passed = audits.filter((a) => a.status === "pass").length
 
-  const checksPassed = overallScore >= releaseThreshold && failed === 0
+  const checksPassed = overallScore >= releaseThreshold && failed === 0 && typecheckMeasured && typecheckOk
   const gate = evaluateGate(options.execution, "lighthouse-backpressure", checksPassed)
+  const gateReceipt = createGateReceipt(options.execution, gate, overallScore)
 
   const waterfall: ReadonlyArray<TimingWaterfallStep> = [
     { name: "typecheck (tsc --noEmit)", category: "correctness", baselineMs: 1840, cachedMs: 190, cacheHit: true },
@@ -625,6 +638,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     execution: options.execution,
     policy,
     gate,
+    gateReceipt,
     overallScore,
     overallRating: ratingForScore(overallScore),
     categories,

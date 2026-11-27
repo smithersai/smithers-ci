@@ -48,7 +48,7 @@ describe("Cloudflare Worker + FactoryHubDO (Factory UI + Live Cloud MCP + One-Ti
   })
 
   it("mints single-use smo_ token, strips spoofed headers, burns on first PKCE exchange, and persists live MCP writes", async () => {
-    const verifier = "worker-pkce-verifier-0123456789abcdef"
+    const verifier = "worker-pkce-verifier-0123456789abcdef0123456789ab"
     const challenge = await webPkceS256(verifier)
 
     // Public caller attempting to spoof x-smithers-control-plane header gets downgraded to untrusted:community

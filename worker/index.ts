@@ -17,7 +17,17 @@ export interface WorkerEnv {
   readonly SMITHERS_CONTROL_SECRET?: string
 }
 
+const MAX_REQUEST_BODY_BYTES = 256 * 1024 // 256 KiB hard edge cap
 const fallbackHub = new FactoryHubDO({ storage: {} })
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length || a.length === 0) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return diff === 0
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body, null, 2), {
@@ -35,6 +45,45 @@ function getHub(env: WorkerEnv): { fetch(request: Request): Promise<Response> } 
     return env.FACTORY_HUB.get(env.FACTORY_HUB.idFromName("smithersai/smithers-ci"))
   }
   return fallbackHub
+}
+
+async function readBoundedBody(
+  request: Request,
+  maxBytes: number
+): Promise<{ readonly ok: true; readonly bytes: ArrayBuffer } | { readonly ok: false }> {
+  const declared = Number(request.headers.get("content-length") ?? "0")
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    return { ok: false }
+  }
+  if (!request.body) {
+    return { ok: true, bytes: new ArrayBuffer(0) }
+  }
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (value) {
+      total += value.byteLength
+      if (total > maxBytes) {
+        try {
+          await reader.cancel()
+        } catch {
+          // ignore cancel error
+        }
+        return { ok: false }
+      }
+      chunks.push(value)
+    }
+  }
+  const merged = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return { ok: true, bytes: merged.buffer }
 }
 
 export default {
@@ -67,6 +116,8 @@ export default {
           "artifact:write:untrusted",
           "todo:draft",
           "issue:create",
+          "issue:comment",
+          "pr:draft",
           "changeset:propose",
           "audit:run"
         ],
@@ -75,14 +126,13 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/.well-known/oauth-authorization-server") {
+      const exchangeEndpoint = `${origin}/${FACTORY_SNAPSHOT.repository}/mcp/exchange`
       return jsonResponse({
         issuer: origin,
-        authorization_endpoint: `${origin}/api/mcp/oauth/authorize`,
-        token_endpoint: `${origin}/api/mcp/oauth/token`,
-        registration_endpoint: `${origin}/api/mcp/oauth/register`,
-        one_time_exchange_endpoint: `${origin}/${FACTORY_SNAPSHOT.repository}/mcp/exchange`,
-        response_types_supported: ["code"],
-        grant_types_supported: ["authorization_code"],
+        token_endpoint: exchangeEndpoint,
+        one_time_exchange_endpoint: exchangeEndpoint,
+        mcp_endpoint: `${origin}/${FACTORY_SNAPSHOT.repository}/mcp`,
+        grant_types_supported: ["urn:smithers:params:oauth:grant-type:one-time-token"],
         code_challenge_methods_supported: ["S256"]
       })
     }
@@ -111,12 +161,23 @@ export default {
       if (
         env.SMITHERS_CONTROL_SECRET &&
         env.SMITHERS_CONTROL_SECRET.length >= 16 &&
-        controlAuth === env.SMITHERS_CONTROL_SECRET
+        constantTimeEqual(controlAuth, env.SMITHERS_CONTROL_SECRET)
       ) {
         forwardedHeaders.set("x-smithers-control-plane", "verified")
       }
-      const bodyBytes =
-        request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer()
+
+      let bodyBytes: ArrayBuffer | undefined
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        const readRes = await readBoundedBody(request, MAX_REQUEST_BODY_BYTES)
+        if (!readRes.ok) {
+          return jsonResponse(
+            { error: "payload_too_large", message: `Request body exceeds ${MAX_REQUEST_BODY_BYTES} bytes` },
+            413
+          )
+        }
+        bodyBytes = readRes.bytes
+      }
+
       const forwarded = new Request(request.url, {
         method: request.method,
         headers: forwardedHeaders,

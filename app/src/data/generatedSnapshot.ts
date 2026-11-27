@@ -34,7 +34,7 @@ export interface FactorySnapshot {
 }
 
 export const FACTORY_SNAPSHOT: FactorySnapshot = {
-  "generatedAt": "2026-11-27T08:02:47.145Z",
+  "generatedAt": "2026-11-27T08:38:08.480Z",
   "repository": "smithersai/smithers-ci",
   "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
   "cloudUrl": "https://smithers.sh/smithersai/smithers-ci",
@@ -44,7 +44,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "objectStoreEndpoint": "https://build.smithers.sh",
   "trustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-27T08:02:47.149Z",
+    "generatedAt": "2026-11-27T08:38:08.485Z",
     "repository": "smithersai/smithers-ci",
     "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
     "execution": {
@@ -58,7 +58,8 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": true,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-27T08:02:47.146Z"
+      "verifiedAt": "2026-11-27T08:38:08.482Z",
+      "expiresAt": "2026-11-27T08:48:08.480Z"
     },
     "policy": {
       "allowExecution": true,
@@ -77,6 +78,17 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "status": "passed",
       "trustTier": "trusted:sandbox",
       "reason": "Gate lighthouse-backpressure verified by trusted:sandbox (cfbox-gate-04)."
+    },
+    "gateReceipt": {
+      "repository": "smithersai/smithers-ci",
+      "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
+      "gate": "lighthouse-backpressure",
+      "score": 100,
+      "passed": true,
+      "satisfied": true,
+      "trustTier": "trusted:sandbox",
+      "actor": "cfbox-gate-04",
+      "verifiedAt": "2026-11-27T08:38:08.482Z"
     },
     "overallScore": 100,
     "overallRating": "pass",
@@ -114,11 +126,11 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "status": "pass",
             "score": 100,
             "weight": 4,
-            "displayValue": "22/22 passed",
-            "durationMs": 586,
+            "displayValue": "35/35 passed",
+            "durationMs": 740,
             "evidence": [
               "Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP",
-              "Observed 22 passing and 0 failing tests"
+              "Observed 35 passing and 0 failing tests"
             ]
           },
           {
@@ -280,10 +292,10 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "durationMs": 12,
             "evidence": [
               "Shared Object Store Cache Write (/ac, /cas) -> ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
-              "Trusted Artifact Pointer Publication -> ObjectStore.putArtifact namespace isolation",
-              "Merge / Release Gate Satisfaction -> ExecutionTrust.evaluateGate",
-              "One-Time Sandbox Auth Token Minting -> OneTimeTokenStore.mint",
-              "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -> ExecutionTrust.authorizeAction + McpServer guard"
+              "Trusted Artifact Pointer Publication -> McpServer destination scope check + ObjectStore untrusted-cas isolation",
+              "Merge / Release Gate Satisfaction -> ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification",
+              "One-Time Sandbox Auth Token Minting & PKCE Exchange -> OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS",
+              "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -> ExecutionTrust.authorizeAction (default-deny) + McpServer guard"
             ]
           }
         ]
@@ -449,10 +461,10 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "18 tools live",
+            "displayValue": "20 tools live",
             "durationMs": 16,
             "evidence": [
-              "Streamable HTTP MCP server with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+              "Streamable HTTP MCP server exposes 20 tools with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
             ]
           }
         ]
@@ -507,34 +519,34 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
         "privilegedStep": "Shared Object Store Cache Write (/ac, /cas)",
         "originInput": "HMAC-signed ExecutionClaim + server-minted cache:write scope",
         "trustBoundary": "ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
-        "enforcementMechanism": "Constant-time HMAC verification + tier check (trusted:maintainer | trusted:sandbox only)",
+        "enforcementMechanism": "Constant-time HMAC verification + exhaustive tier check (trusted:maintainer | trusted:sandbox only)",
         "untrustedCanBypass": false
       },
       {
         "privilegedStep": "Trusted Artifact Pointer Publication",
-        "originInput": "Verified ExecutionClaim + SHA-256 content digest",
-        "trustBoundary": "ObjectStore.putArtifact namespace isolation",
-        "enforcementMechanism": "Untrusted writes routed exclusively to untrusted/<actor>/<sha>/, never trusted/",
+        "originInput": "Verified ExecutionClaim + artifact:write:trusted scope + SHA-256 content digest",
+        "trustBoundary": "McpServer destination scope check + ObjectStore untrusted-cas isolation",
+        "enforcementMechanism": "Untrusted writes routed exclusively to untrusted-cas/ and untrusted/<actor>/<sha>/, never cas/ or trusted/",
         "untrustedCanBypass": false
       },
       {
         "privilegedStep": "Merge / Release Gate Satisfaction",
-        "originInput": "AuditEngine report + verified ExecutionClaim",
-        "trustBoundary": "ExecutionTrust.evaluateGate",
-        "enforcementMechanism": "Hard returns satisfied: false and status: untrusted_preview for untrusted:community",
+        "originInput": "AuditEngine commit-bound GateReceipt + verified ExecutionClaim",
+        "trustBoundary": "ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification",
+        "enforcementMechanism": "Requires trusted GateReceipt matching exact repository and head commit SHA; untrusted runs stay untrusted_preview",
         "untrustedCanBypass": false
       },
       {
-        "privilegedStep": "One-Time Sandbox Auth Token Minting",
-        "originInput": "Maintainer identity + scope request",
-        "trustBoundary": "OneTimeTokenStore.mint",
-        "enforcementMechanism": "Scope intersection strips person-only actions and strips cache:write for untrusted tiers",
+        "privilegedStep": "One-Time Sandbox Auth Token Minting & PKCE Exchange",
+        "originInput": "Maintainer identity + allowlisted scopes + RFC 7636 S256 challenge",
+        "trustBoundary": "OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS",
+        "enforcementMechanism": "Single-use conditional UPDATE burn + atomic lease insert; scope intersection strips person-only and untrusted write scopes",
         "untrustedCanBypass": false
       },
       {
         "privilegedStep": "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write)",
         "originInput": "Authenticated session callerKind + maintainer role",
-        "trustBoundary": "ExecutionTrust.authorizeAction + McpServer guard",
+        "trustBoundary": "ExecutionTrust.authorizeAction (default-deny) + McpServer guard",
         "enforcementMechanism": "403 person_only for all agent and sandbox tokens regardless of underlying user role",
         "untrustedCanBypass": false
       }
@@ -550,7 +562,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   },
   "untrustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-27T08:02:47.150Z",
+    "generatedAt": "2026-11-27T08:38:08.486Z",
     "repository": "smithersai/smithers-ci",
     "commitSha": "572c6e21abcd1234567890abcdef1234567890ef",
     "execution": {
@@ -564,7 +576,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": false,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-27T08:02:47.146Z"
+      "verifiedAt": "2026-11-27T08:38:08.482Z"
     },
     "policy": {
       "allowExecution": true,
@@ -583,6 +595,17 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "status": "untrusted_preview",
       "trustTier": "untrusted:community",
       "reason": "Untrusted community execution is encouraged for fast local feedback, but cannot satisfy required merge or release gates or write to the shared cache."
+    },
+    "gateReceipt": {
+      "repository": "smithersai/smithers-ci",
+      "commitSha": "572c6e21abcd1234567890abcdef1234567890ef",
+      "gate": "lighthouse-backpressure",
+      "score": 100,
+      "passed": true,
+      "satisfied": false,
+      "trustTier": "untrusted:community",
+      "actor": "alice-dev",
+      "verifiedAt": "2026-11-27T08:38:08.482Z"
     },
     "overallScore": 100,
     "overallRating": "pass",
@@ -620,11 +643,11 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "status": "pass",
             "score": 100,
             "weight": 4,
-            "displayValue": "22/22 passed",
-            "durationMs": 612,
+            "displayValue": "35/35 passed",
+            "durationMs": 790,
             "evidence": [
               "Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP",
-              "Observed 22 passing and 0 failing tests"
+              "Observed 35 passing and 0 failing tests"
             ]
           },
           {
@@ -786,10 +809,10 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "durationMs": 12,
             "evidence": [
               "Shared Object Store Cache Write (/ac, /cas) -> ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
-              "Trusted Artifact Pointer Publication -> ObjectStore.putArtifact namespace isolation",
-              "Merge / Release Gate Satisfaction -> ExecutionTrust.evaluateGate",
-              "One-Time Sandbox Auth Token Minting -> OneTimeTokenStore.mint",
-              "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -> ExecutionTrust.authorizeAction + McpServer guard"
+              "Trusted Artifact Pointer Publication -> McpServer destination scope check + ObjectStore untrusted-cas isolation",
+              "Merge / Release Gate Satisfaction -> ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification",
+              "One-Time Sandbox Auth Token Minting & PKCE Exchange -> OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS",
+              "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -> ExecutionTrust.authorizeAction (default-deny) + McpServer guard"
             ]
           }
         ]
@@ -955,10 +978,10 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "18 tools live",
+            "displayValue": "20 tools live",
             "durationMs": 16,
             "evidence": [
-              "Streamable HTTP MCP server with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+              "Streamable HTTP MCP server exposes 20 tools with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
             ]
           }
         ]
@@ -1013,34 +1036,34 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
         "privilegedStep": "Shared Object Store Cache Write (/ac, /cas)",
         "originInput": "HMAC-signed ExecutionClaim + server-minted cache:write scope",
         "trustBoundary": "ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
-        "enforcementMechanism": "Constant-time HMAC verification + tier check (trusted:maintainer | trusted:sandbox only)",
+        "enforcementMechanism": "Constant-time HMAC verification + exhaustive tier check (trusted:maintainer | trusted:sandbox only)",
         "untrustedCanBypass": false
       },
       {
         "privilegedStep": "Trusted Artifact Pointer Publication",
-        "originInput": "Verified ExecutionClaim + SHA-256 content digest",
-        "trustBoundary": "ObjectStore.putArtifact namespace isolation",
-        "enforcementMechanism": "Untrusted writes routed exclusively to untrusted/<actor>/<sha>/, never trusted/",
+        "originInput": "Verified ExecutionClaim + artifact:write:trusted scope + SHA-256 content digest",
+        "trustBoundary": "McpServer destination scope check + ObjectStore untrusted-cas isolation",
+        "enforcementMechanism": "Untrusted writes routed exclusively to untrusted-cas/ and untrusted/<actor>/<sha>/, never cas/ or trusted/",
         "untrustedCanBypass": false
       },
       {
         "privilegedStep": "Merge / Release Gate Satisfaction",
-        "originInput": "AuditEngine report + verified ExecutionClaim",
-        "trustBoundary": "ExecutionTrust.evaluateGate",
-        "enforcementMechanism": "Hard returns satisfied: false and status: untrusted_preview for untrusted:community",
+        "originInput": "AuditEngine commit-bound GateReceipt + verified ExecutionClaim",
+        "trustBoundary": "ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification",
+        "enforcementMechanism": "Requires trusted GateReceipt matching exact repository and head commit SHA; untrusted runs stay untrusted_preview",
         "untrustedCanBypass": false
       },
       {
-        "privilegedStep": "One-Time Sandbox Auth Token Minting",
-        "originInput": "Maintainer identity + scope request",
-        "trustBoundary": "OneTimeTokenStore.mint",
-        "enforcementMechanism": "Scope intersection strips person-only actions and strips cache:write for untrusted tiers",
+        "privilegedStep": "One-Time Sandbox Auth Token Minting & PKCE Exchange",
+        "originInput": "Maintainer identity + allowlisted scopes + RFC 7636 S256 challenge",
+        "trustBoundary": "OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS",
+        "enforcementMechanism": "Single-use conditional UPDATE burn + atomic lease insert; scope intersection strips person-only and untrusted write scopes",
         "untrustedCanBypass": false
       },
       {
         "privilegedStep": "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write)",
         "originInput": "Authenticated session callerKind + maintainer role",
-        "trustBoundary": "ExecutionTrust.authorizeAction + McpServer guard",
+        "trustBoundary": "ExecutionTrust.authorizeAction (default-deny) + McpServer guard",
         "enforcementMechanism": "403 person_only for all agent and sandbox tokens regardless of underlying user role",
         "untrustedCanBypass": false
       }
@@ -1057,54 +1080,55 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "storeStats": {
     "endpoint": "https://build.smithers.sh",
     "localRoot": "/Users/williamcory/smithers-ci/.smithers/object-store",
-    "casObjects": 20,
+    "casObjects": 30,
+    "untrustedCasObjects": 3,
     "actionCacheEntries": 0,
     "trustedArtifacts": 2,
     "untrustedArtifacts": 3,
-    "totalBytes": 520635
+    "totalBytes": 865445
   },
   "artifacts": [
     {
       "name": "community-preview-audit.json",
       "namespace": "untrusted/alice-dev/572c6e21abcd1234567890abcdef1234567890ef",
       "key": "untrusted/alice-dev/572c6e21abcd1234567890abcdef1234567890ef/community-preview-audit.json",
-      "sha256": "0c194f51c6059cb99b9106455c556dde97bf01937cc2793f3b807ce3bc69d9a1",
-      "bytes": 18710,
+      "sha256": "99265e191c9117185da099b820c1747b6134798bee4ff9ba657e62a82f621039",
+      "bytes": 19548,
       "contentType": "application/json",
       "visibility": "public",
       "trustTier": "untrusted:community",
       "trusted": false,
       "actor": "alice-dev",
       "commitSha": "572c6e21abcd1234567890abcdef1234567890ef",
-      "createdAt": "2026-11-27T08:02:47.185Z"
+      "createdAt": "2026-11-27T08:38:08.490Z"
     },
     {
       "name": "lighthouse-audit.html",
       "namespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
       "key": "trusted/46412bca49c3a0f1234567890abcdef123456789/lighthouse-audit.html",
-      "sha256": "e47f06fac1477cdbbb9df1862af7b6e33874ca2382022080dd7b3c0d92200366",
-      "bytes": 37252,
+      "sha256": "4496c4cd080878dcb13a3da80b9cecef0801d54c51473206b3a7479f35a14650",
+      "bytes": 37757,
       "contentType": "text/html; charset=utf-8",
       "visibility": "public",
       "trustTier": "trusted:sandbox",
       "trusted": true,
       "actor": "cfbox-gate-04",
       "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
-      "createdAt": "2026-11-27T08:02:47.162Z"
+      "createdAt": "2026-11-27T08:38:08.489Z"
     },
     {
       "name": "lighthouse-audit.json",
       "namespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
       "key": "trusted/46412bca49c3a0f1234567890abcdef123456789/lighthouse-audit.json",
-      "sha256": "a62ff671ec779faa63f5b9b5565b447c19790112e96bd9ed7656472d3b14134a",
-      "bytes": 18579,
+      "sha256": "596032c55e77164447288e1fccd03220396bdb53ce8fb45011670e95b01f950c",
+      "bytes": 19461,
       "contentType": "application/json",
       "visibility": "public",
       "trustTier": "trusted:sandbox",
       "trusted": true,
       "actor": "cfbox-gate-04",
       "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
-      "createdAt": "2026-11-27T08:02:47.151Z"
+      "createdAt": "2026-11-27T08:38:08.488Z"
     },
     {
       "name": "lighthouse-audit.html",
@@ -1259,6 +1283,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "body": "Stacks cs-01 through cs-03 to make smithers-ci a public flagship factory on smithers.sh/smithersai/smithers-ci.",
       "branch": "stack/03-cloud-mcp-and-ott",
       "baseBranch": "main",
+      "headCommitSha": "1ac184541b6d1234567890abcdef1234567890cd",
       "author": "roninjin10",
       "authorContributions": 142,
       "state": "open",
@@ -1270,6 +1295,17 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trustTier": "trusted:sandbox",
       "auditScore": 99,
       "gateSatisfied": true,
+      "gateReceipt": {
+        "repository": "smithersai/smithers-ci",
+        "commitSha": "1ac184541b6d1234567890abcdef1234567890cd",
+        "gate": "lighthouse-backpressure",
+        "score": 99,
+        "passed": true,
+        "satisfied": true,
+        "trustTier": "trusted:sandbox",
+        "actor": "cfbox-gate-04",
+        "verifiedAt": "2026-11-26T23:44:00.000Z"
+      },
       "mirrorSyncedToGithub": true,
       "createdAt": "2026-11-26T23:44:00.000Z"
     },
@@ -1279,6 +1315,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "body": "Community PR tested locally with untrusted preview mode (96/100). Ready for maintainer controlled-sandbox re-verification.",
       "branch": "community/zig-static-archive-hints",
       "baseBranch": "main",
+      "headCommitSha": "572c6e21abcd1234567890abcdef1234567890ef",
       "author": "alice-dev",
       "authorContributions": 3,
       "state": "open",
@@ -1288,6 +1325,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trustTier": "untrusted:community",
       "auditScore": 96,
       "gateSatisfied": false,
+      "gateReceipt": null,
       "mirrorSyncedToGithub": true,
       "createdAt": "2026-11-26T23:47:00.000Z"
     }
@@ -1304,6 +1342,17 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trustTier": "trusted:sandbox",
       "auditScore": 100,
       "gateSatisfied": true,
+      "gateReceipt": {
+        "repository": "smithersai/smithers-ci",
+        "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
+        "gate": "lighthouse-backpressure",
+        "score": 100,
+        "passed": true,
+        "satisfied": true,
+        "trustTier": "trusted:sandbox",
+        "actor": "cfbox-gate-04",
+        "verifiedAt": "2026-11-26T23:38:00.000Z"
+      },
       "state": "merged",
       "diffSummary": "+420 -0 across src/trust/ExecutionTrust.ts, src/store/ObjectStore.ts",
       "updatedAt": "2026-11-26T23:38:00.000Z"
@@ -1319,6 +1368,17 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trustTier": "trusted:sandbox",
       "auditScore": 99,
       "gateSatisfied": true,
+      "gateReceipt": {
+        "repository": "smithersai/smithers-ci",
+        "commitSha": "9e0efd0d871f1234567890abcdef1234567890ab",
+        "gate": "lighthouse-backpressure",
+        "score": 99,
+        "passed": true,
+        "satisfied": true,
+        "trustTier": "trusted:sandbox",
+        "actor": "cfbox-gate-04",
+        "verifiedAt": "2026-11-26T23:41:00.000Z"
+      },
       "state": "ready",
       "diffSummary": "+610 -0 across src/audit/AuditEngine.ts, src/audit/LighthouseHtml.ts",
       "updatedAt": "2026-11-26T23:41:00.000Z"
@@ -1334,6 +1394,17 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trustTier": "trusted:sandbox",
       "auditScore": 98,
       "gateSatisfied": true,
+      "gateReceipt": {
+        "repository": "smithersai/smithers-ci",
+        "commitSha": "1ac184541b6d1234567890abcdef1234567890cd",
+        "gate": "lighthouse-backpressure",
+        "score": 98,
+        "passed": true,
+        "satisfied": true,
+        "trustTier": "trusted:sandbox",
+        "actor": "cfbox-gate-04",
+        "verifiedAt": "2026-11-26T23:44:00.000Z"
+      },
       "state": "review",
       "diffSummary": "+540 -0 across src/auth/OneTimeToken.ts, src/mcp/McpServer.ts",
       "updatedAt": "2026-11-26T23:44:00.000Z"
@@ -1349,6 +1420,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trustTier": "untrusted:community",
       "auditScore": 96,
       "gateSatisfied": false,
+      "gateReceipt": null,
       "state": "review",
       "diffSummary": "+84 -12 (untrusted community preview awaiting controlled sandbox rerun)",
       "updatedAt": "2026-11-26T23:47:00.000Z"
@@ -1897,7 +1969,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
     },
     {
       "name": "repo_read_file",
-      "description": "Read a UTF-8 file from the repository with strict path containment.",
+      "description": "Read a UTF-8 file from the repository with strict symlink and path containment.",
       "requiredScope": null,
       "inputSchema": {
         "type": "object",
@@ -1913,7 +1985,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
     },
     {
       "name": "audit_run",
-      "description": "Run the Lighthouse-style 6-category backpressure audit and upload JSON + HTML reports to the shared object store.",
+      "description": "Run the Lighthouse-style 6-category backpressure audit. Pass storeArtifacts: true with an artifact write scope to store JSON + HTML reports.",
       "requiredScope": null,
       "inputSchema": {
         "type": "object",
@@ -1926,7 +1998,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
     },
     {
       "name": "artifacts_list",
-      "description": "List artifacts stored in the shared Smithers Cloud object store.",
+      "description": "List public artifacts stored in the shared Smithers Cloud object store (private artifacts require a trusted artifact:read lease).",
       "requiredScope": null,
       "inputSchema": {
         "type": "object",
@@ -1939,7 +2011,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
     },
     {
       "name": "artifact_put",
-      "description": "Upload a named artifact to the shared object store (trusted namespace for controlled sandboxes/maintainers, isolated untrusted namespace for community).",
+      "description": "Upload a named artifact to the shared object store (trusted/ requires both trusted tier and artifact:write:trusted scope; otherwise isolated under untrusted/).",
       "requiredScope": "artifact:write:untrusted",
       "inputSchema": {
         "type": "object",
@@ -2043,7 +2115,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
     },
     {
       "name": "issue_create",
-      "description": "Open a public issue attributed as <actor> (agent). Policy smithers:* labels are stripped.",
+      "description": "Open a public issue attributed to the authenticated agent identity. Policy smithers:* labels are stripped.",
       "requiredScope": "issue:create",
       "inputSchema": {
         "type": "object",
@@ -2232,34 +2304,34 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "privilegedStep": "Shared Object Store Cache Write (/ac, /cas)",
       "originInput": "HMAC-signed ExecutionClaim + server-minted cache:write scope",
       "trustBoundary": "ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
-      "enforcementMechanism": "Constant-time HMAC verification + tier check (trusted:maintainer | trusted:sandbox only)",
+      "enforcementMechanism": "Constant-time HMAC verification + exhaustive tier check (trusted:maintainer | trusted:sandbox only)",
       "untrustedCanBypass": false
     },
     {
       "privilegedStep": "Trusted Artifact Pointer Publication",
-      "originInput": "Verified ExecutionClaim + SHA-256 content digest",
-      "trustBoundary": "ObjectStore.putArtifact namespace isolation",
-      "enforcementMechanism": "Untrusted writes routed exclusively to untrusted/<actor>/<sha>/, never trusted/",
+      "originInput": "Verified ExecutionClaim + artifact:write:trusted scope + SHA-256 content digest",
+      "trustBoundary": "McpServer destination scope check + ObjectStore untrusted-cas isolation",
+      "enforcementMechanism": "Untrusted writes routed exclusively to untrusted-cas/ and untrusted/<actor>/<sha>/, never cas/ or trusted/",
       "untrustedCanBypass": false
     },
     {
       "privilegedStep": "Merge / Release Gate Satisfaction",
-      "originInput": "AuditEngine report + verified ExecutionClaim",
-      "trustBoundary": "ExecutionTrust.evaluateGate",
-      "enforcementMechanism": "Hard returns satisfied: false and status: untrusted_preview for untrusted:community",
+      "originInput": "AuditEngine commit-bound GateReceipt + verified ExecutionClaim",
+      "trustBoundary": "ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification",
+      "enforcementMechanism": "Requires trusted GateReceipt matching exact repository and head commit SHA; untrusted runs stay untrusted_preview",
       "untrustedCanBypass": false
     },
     {
-      "privilegedStep": "One-Time Sandbox Auth Token Minting",
-      "originInput": "Maintainer identity + scope request",
-      "trustBoundary": "OneTimeTokenStore.mint",
-      "enforcementMechanism": "Scope intersection strips person-only actions and strips cache:write for untrusted tiers",
+      "privilegedStep": "One-Time Sandbox Auth Token Minting & PKCE Exchange",
+      "originInput": "Maintainer identity + allowlisted scopes + RFC 7636 S256 challenge",
+      "trustBoundary": "OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS",
+      "enforcementMechanism": "Single-use conditional UPDATE burn + atomic lease insert; scope intersection strips person-only and untrusted write scopes",
       "untrustedCanBypass": false
     },
     {
       "privilegedStep": "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write)",
       "originInput": "Authenticated session callerKind + maintainer role",
-      "trustBoundary": "ExecutionTrust.authorizeAction + McpServer guard",
+      "trustBoundary": "ExecutionTrust.authorizeAction (default-deny) + McpServer guard",
       "enforcementMechanism": "403 person_only for all agent and sandbox tokens regardless of underlying user role",
       "untrustedCanBypass": false
     }

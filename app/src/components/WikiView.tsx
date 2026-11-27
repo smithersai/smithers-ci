@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react"
 import type { FactorySnapshot } from "../data/generatedSnapshot.ts"
+import { WikiDiagram } from "./WikiDiagram.tsx"
 
 interface WikiViewProps {
   readonly snapshot: FactorySnapshot
@@ -45,9 +46,11 @@ function renderInlineText(
 }
 
 function MarkdownBlocks({
+  slug,
   markdown,
   onSelectSlug
 }: {
+  readonly slug: string
   readonly markdown: string
   readonly onSelectSlug: (slug: string) => void
 }) {
@@ -55,6 +58,7 @@ function MarkdownBlocks({
   const blocks: React.ReactNode[] = []
   let i = 0
   let key = 0
+  let renderedPrimaryDiagram = false
 
   while (i < lines.length) {
     const line = lines[i] ?? ""
@@ -67,16 +71,21 @@ function MarkdownBlocks({
         i += 1
       }
       i += 1
-      blocks.push(
-        <div key={key++} style={{ margin: "0.75rem 0 1rem" }}>
-          {lang ? (
-            <div style={{ fontSize: "0.72rem", fontFamily: "var(--mono)", color: "var(--muted)", marginBottom: "0.25rem" }}>
-              {lang === "mermaid" ? "ARCHITECTURE DIAGRAM (MERMAID)" : lang.toUpperCase()}
-            </div>
-          ) : null}
-          <pre className="code-block">{codeLines.join("\n")}</pre>
-        </div>
-      )
+      if (!renderedPrimaryDiagram && (lang === "mermaid" || lang === "text")) {
+        renderedPrimaryDiagram = true
+        blocks.push(<WikiDiagram key={key++} slug={slug} />)
+      } else {
+        blocks.push(
+          <div key={key++} style={{ margin: "0.75rem 0 1rem" }}>
+            {lang ? (
+              <div style={{ fontSize: "0.72rem", fontFamily: "var(--mono)", color: "var(--muted)", marginBottom: "0.25rem" }}>
+                {lang.toUpperCase()}
+              </div>
+            ) : null}
+            <pre className="code-block">{codeLines.join("\n")}</pre>
+          </div>
+        )
+      }
       continue
     }
 
@@ -248,7 +257,7 @@ export function WikiView({ snapshot }: WikiViewProps) {
           <span className="pill">{activePage.filePath}</span>
           <span className="pill pill-pass">{activePage.hasDiagram ? "Visual-first diagram verified" : "No diagram"}</span>
         </div>
-        <MarkdownBlocks markdown={activePage.markdown} onSelectSlug={setSelectedSlug} />
+        <MarkdownBlocks slug={activePage.slug} markdown={activePage.markdown} onSelectSlug={setSelectedSlug} />
       </article>
 
       {/* Right Backlinks & Graph */}
@@ -261,8 +270,8 @@ export function WikiView({ snapshot }: WikiViewProps) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
             {activePage.backlinks.map((slug) => (
-              <button key={slug} className="wiki-nav-item" onClick={() => setSelectedSlug(slug)}>
-                &lt;- [[{slug}]]
+              <button key={slug} className="wiki-nav-item wiki-link-row" onClick={() => setSelectedSlug(slug)}>
+                ← {slug}
               </button>
             ))}
           </div>
@@ -273,8 +282,8 @@ export function WikiView({ snapshot }: WikiViewProps) {
         </strong>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
           {activePage.linksOut.map((slug) => (
-            <button key={slug} className="wiki-nav-item" onClick={() => setSelectedSlug(slug)}>
-              -&gt; [[{slug}]]
+            <button key={slug} className="wiki-nav-item wiki-link-row" onClick={() => setSelectedSlug(slug)}>
+              → {slug}
             </button>
           ))}
         </div>

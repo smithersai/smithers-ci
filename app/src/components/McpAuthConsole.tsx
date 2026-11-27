@@ -7,20 +7,41 @@ interface McpAuthConsoleProps {
   readonly role: RoleView
 }
 
-interface DemoMintedToken {
+interface LiveMintedToken {
   readonly id: string
-  readonly rawPreview: string
+  readonly rawToken: string
+  readonly pkceVerifier: string
+  readonly pkceChallenge: string
   readonly subject: string
   readonly trustTier: "trusted:sandbox" | "trusted:maintainer" | "untrusted:community"
   readonly granted: ReadonlyArray<string>
   readonly stripped: ReadonlyArray<string>
   readonly redeemed: boolean
+  readonly source: "live-do" | "local-preview"
 }
+
+type PlaygroundTool =
+  | "trust_policy_explain"
+  | "wiki_search"
+  | "mythical_history_outline"
+  | "cache_stats"
+  | "todos_list"
+  | "todo_draft"
+  | "artifact_put"
+  | "pr/merge"
 
 function randomHex(bytes: number): string {
   const arr = new Uint8Array(bytes)
   crypto.getRandomValues(arr)
   return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("")
+}
+
+async function computeBrowserPkceS256(verifier: string): Promise<string> {
+  const bytes = new TextEncoder().encode(verifier)
+  const buf = await crypto.subtle.digest("SHA-256", bytes)
+  let bin = ""
+  for (const b of new Uint8Array(buf)) bin += String.fromCharCode(b)
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
 }
 
 export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
@@ -30,8 +51,20 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
   const [tier, setTier] = useState<"trusted:sandbox" | "untrusted:community">(
     role === "maintainer" ? "trusted:sandbox" : "untrusted:community"
   )
-  const [minted, setMinted] = useState<DemoMintedToken | null>(null)
+  const [minted, setMinted] = useState<LiveMintedToken | null>(null)
+  const [mintBusy, setMintBusy] = useState(false)
+  const [redeemBusy, setRedeemBusy] = useState(false)
   const [redeemLog, setRedeemLog] = useState<string | null>(null)
+  const [activeLease, setActiveLease] = useState<{
+    readonly leaseId: string
+    readonly leaseToken: string
+    readonly trustTier: string
+  } | null>(null)
+
+  const [playgroundTool, setPlaygroundTool] = useState<PlaygroundTool>("trust_policy_explain")
+  const [playgroundQuery, setPlaygroundQuery] = useState("isolation")
+  const [playgroundOutput, setPlaygroundOutput] = useState<string | null>(null)
+  const [playgroundBusy, setPlaygroundBusy] = useState(false)
 
   const connectPrompts: Record<"claude" | "codex" | "antigravity", string> = {
     claude: `claude mcp add --transport http smithers-ci ${snapshot.mcpEndpoint}`,
@@ -39,8 +72,13 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
     antigravity: `Add Streamable HTTP MCP server "${snapshot.mcpEndpoint}" (OAuth 2.1 PKCE S256 discovery enabled)`
   }
 
-  const handleMintPreview = () => {
-    const requested = [
+  const handleMintLive = async () => {
+    setMintBusy(true)
+    setRedeemLog(null)
+    setActiveLease(null)
+    const pkceVerifier = `smithers-browser-pkce-${randomHex(24)}`
+    const pkceChallenge = await computeBrowserPkceS256(pkceVerifier)
+    const requestedScopes = [
       "mcp:read",
       "mcp:write",
       "cache:read",
@@ -54,8 +92,48 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
       "pr/merge",
       "secrets/write"
     ]
+    const requestedTier = role === "maintainer" ? tier : "untrusted:community"
+    const cleanSubject = subject.trim() || "sandbox:cfbox-01"
 
-    const effectiveTier = role === "maintainer" ? tier : "untrusted:community"
+    try {
+      const res = await fetch("/smithersai/smithers-ci/mcp/mint", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          subject: cleanSubject,
+          trustTier: requestedTier,
+          scopes: requestedScopes,
+          pkceChallenge
+        })
+      })
+      const contentType = res.headers.get("content-type") ?? ""
+      if (res.ok && contentType.includes("application/json")) {
+        const data = (await res.json()) as {
+          id: string
+          token: string
+          trustTier: "trusted:sandbox" | "trusted:maintainer" | "untrusted:community"
+          scopes: string[]
+          strippedScopes: string[]
+        }
+        setMinted({
+          id: data.id,
+          rawToken: data.token,
+          pkceVerifier,
+          pkceChallenge,
+          subject: cleanSubject,
+          trustTier: data.trustTier,
+          granted: data.scopes,
+          stripped: data.strippedScopes,
+          redeemed: false,
+          source: "live-do"
+        })
+        setMintBusy(false)
+        return
+      }
+    } catch {
+      // Fallback to local preview when running static Vite dev without Worker backend
+    }
+
     const personOnly = new Set<string>(snapshot.personOnlyActions)
     const untrustedAllowed = new Set([
       "mcp:read",
@@ -66,41 +144,155 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
       "changeset:propose",
       "audit:run"
     ])
-
     const granted: string[] = []
     const stripped: string[] = []
-    for (const scope of requested) {
-      if (personOnly.has(scope)) {
-        stripped.push(scope)
-      } else if (effectiveTier === "untrusted:community" && !untrustedAllowed.has(scope)) {
+    for (const scope of requestedScopes) {
+      if (personOnly.has(scope) || (requestedTier === "untrusted:community" && !untrustedAllowed.has(scope))) {
         stripped.push(scope)
       } else {
         granted.push(scope)
       }
     }
-
     setMinted({
       id: `ott_${randomHex(6)}`,
-      rawPreview: `smo_${randomHex(32)}`,
-      subject: subject.trim() || "sandbox:cfbox-01",
-      trustTier: effectiveTier,
+      rawToken: `smo_${randomHex(32)}`,
+      pkceVerifier,
+      pkceChallenge,
+      subject: cleanSubject,
+      trustTier: requestedTier,
       granted,
       stripped,
-      redeemed: false
+      redeemed: false,
+      source: "local-preview"
     })
-    setRedeemLog(null)
+    setMintBusy(false)
   }
 
-  const handleRedeemOnce = () => {
+  const handleRedeemOnce = async () => {
     if (!minted) return
+    setRedeemBusy(true)
+
+    if (minted.source === "live-do") {
+      try {
+        const res = await fetch("/smithersai/smithers-ci/mcp/exchange", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            token: minted.rawToken,
+            pkceVerifier: minted.pkceVerifier
+          })
+        })
+        const data = (await res.json()) as {
+          ok: boolean
+          leaseId?: string
+          leaseToken?: string
+          trustTier?: string
+          code?: string
+          message?: string
+        }
+        if (res.ok && data.ok && data.leaseToken && data.leaseId) {
+          setMinted({ ...minted, redeemed: true })
+          setActiveLease({
+            leaseId: data.leaseId,
+            leaseToken: data.leaseToken,
+            trustTier: data.trustTier ?? minted.trustTier
+          })
+          setRedeemLog(
+            `200 OK (Live SQLite DO): Burned ${minted.id} atomically with PKCE S256 and issued lease ${data.leaseId} (${data.trustTier}). Click again to verify 401 replay rejection.`
+          )
+        } else {
+          setMinted({ ...minted, redeemed: true })
+          setRedeemLog(
+            `${res.status} ${data.code ?? "rejected"} (Live SQLite DO): ${data.message ?? "Single-use token already burned."}`
+          )
+        }
+        setRedeemBusy(false)
+        return
+      } catch {
+        // Fall through to local message
+      }
+    }
+
     if (minted.redeemed) {
       setRedeemLog("401 already_redeemed: Single-use token was burned on first exchange and cannot be replayed.")
+      setRedeemBusy(false)
       return
     }
+    const localLease = `sms_${randomHex(32)}`
     setMinted({ ...minted, redeemed: true })
+    setActiveLease({
+      leaseId: `lease_${randomHex(6)}`,
+      leaseToken: localLease,
+      trustTier: minted.trustTier
+    })
     setRedeemLog(
-      `200 OK: Burned ${minted.id} atomically and issued scoped session lease sms_${randomHex(12)}... (${minted.trustTier}). Click again to verify replay rejection.`
+      `200 OK: Burned ${minted.id} atomically and issued scoped session lease ${localLease.slice(0, 18)}... (${minted.trustTier}). Click again to verify replay rejection.`
     )
+    setRedeemBusy(false)
+  }
+
+  const handleRunPlayground = async () => {
+    setPlaygroundBusy(true)
+    const args: Record<string, unknown> =
+      playgroundTool === "wiki_search"
+        ? { query: playgroundQuery }
+        : playgroundTool === "todo_draft"
+          ? {
+              title: playgroundQuery.trim().length >= 3 ? playgroundQuery.trim() : "Verify live Cloud MCP TODO persistence",
+              body: "Created directly from the live Cloud MCP Playground with a redeemed single-use lease.",
+              priority: "P2"
+            }
+          : playgroundTool === "artifact_put"
+            ? {
+                name: "playground-preview.txt",
+                content: `Smithers CI live playground check: ${playgroundQuery || "ok"}`,
+                contentType: "text/plain; charset=utf-8",
+                visibility: "public"
+              }
+            : playgroundTool === "pr/merge"
+              ? { number: 101 }
+              : {}
+
+    const rpcBody = {
+      jsonrpc: "2.0",
+      id: Date.now(),
+      method: "tools/call",
+      params: { name: playgroundTool, arguments: args }
+    }
+
+    const headers: Record<string, string> = { "content-type": "application/json" }
+    if (activeLease) {
+      headers.authorization = `Bearer ${activeLease.leaseToken}`
+    }
+
+    try {
+      const res = await fetch("/smithersai/smithers-ci/mcp", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(rpcBody)
+      })
+      const contentType = res.headers.get("content-type") ?? ""
+      if (contentType.includes("application/json")) {
+        const json = await res.json()
+        setPlaygroundOutput(JSON.stringify({ httpStatus: res.status, response: json }, null, 2))
+        setPlaygroundBusy(false)
+        return
+      }
+    } catch {
+      // Static local Vite fallback
+    }
+
+    setPlaygroundOutput(
+      JSON.stringify(
+        {
+          note: "Static local Vite preview (deploy or run `smithers-ci mcp serve` for live HTTP RPC)",
+          request: rpcBody
+        },
+        null,
+        2
+      )
+    )
+    setPlaygroundBusy(false)
   }
 
   return (
@@ -129,7 +321,7 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
               </button>
             ))}
           </div>
-          <span className="pill">Endpoint: {snapshot.mcpEndpoint}</span>
+          <span className="pill pill-break">Endpoint: {snapshot.mcpEndpoint}</span>
         </div>
 
         <div className="install-box">
@@ -157,22 +349,24 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
           </div>
           <div className="stat-card">
             <div className="stat-label">One-Time Exchange</div>
-            <code>POST /smithersai/smithers-ci/mcp/exchange</code>
+            <code style={{ overflowWrap: "anywhere", fontSize: "0.78rem" }}>POST /smithersai/smithers-ci/mcp/exchange</code>
           </div>
         </div>
       </section>
 
-      {/* Interactive One-Time Sandbox Auth Minter */}
+      {/* Interactive Live One-Time Sandbox Auth Minter */}
       <section className="card">
         <div className="card-head">
           <div>
-            <h2 className="card-title">One-Time-Use Sandbox & Agent Auth Minter</h2>
+            <h2 className="card-title">Live One-Time-Use Sandbox & Agent Auth Minter</h2>
             <p className="card-sub">
-              Print single-use <code>smo_</code> tokens that store only SHA-256 digests, intersect scopes against trust policy, and burn atomically on first exchange
+              Calls the live Cloudflare Durable Object to mint a single-use <code>smo_</code> token with RFC 7636 PKCE S256, strict scope intersection, and atomic SQLite burn on first exchange.
             </p>
           </div>
           <span className={`pill ${role === "maintainer" ? "pill-pass" : "pill-warn"}`}>
-            {role === "maintainer" ? "Maintainer may mint trusted:sandbox" : "Non-maintainers capped at untrusted:community"}
+            {role === "maintainer"
+              ? "Public browser capped at untrusted until control secret verifies"
+              : "Non-maintainers capped at untrusted:community"}
           </span>
         </div>
 
@@ -185,7 +379,7 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
           </div>
           <div>
             <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginBottom: "0.25rem" }}>
-              Trust Tier
+              Requested Trust Tier
             </label>
             <select
               className="select"
@@ -193,12 +387,12 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
               disabled={role !== "maintainer"}
               onChange={(e) => setTier(e.target.value as "trusted:sandbox" | "untrusted:community")}
             >
-              <option value="trusted:sandbox">trusted:sandbox (controlled container)</option>
+              <option value="trusted:sandbox">trusted:sandbox (control-plane secret required)</option>
               <option value="untrusted:community">untrusted:community (read-only cache)</option>
             </select>
           </div>
-          <button className="btn btn-primary" onClick={handleMintPreview}>
-            Print One-Time smo_ Token
+          <button className="btn btn-primary" disabled={mintBusy} onClick={() => void handleMintLive()}>
+            {mintBusy ? "Minting..." : "Mint Live One-Time smo_ Token"}
           </button>
         </div>
 
@@ -213,19 +407,23 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
                 <span className={`pill ${minted.redeemed ? "pill-fail" : "pill-info"}`}>
                   {minted.redeemed ? "BURNED" : "READY (SINGLE USE)"}
                 </span>
+                <span className="pill">
+                  {minted.source === "live-do" ? "Live SQLite DO" : "Local Preview"}
+                </span>
               </div>
-              <button className="btn btn-sm" onClick={handleRedeemOnce}>
-                {minted.redeemed ? "Attempt Replay (Should Fail)" : "Redeem Once -> Issue Lease"}
+              <button className="btn btn-sm" disabled={redeemBusy} onClick={() => void handleRedeemOnce()}>
+                {minted.redeemed ? "Attempt Replay (Should Return 401)" : "Redeem Once -> Issue Lease"}
               </button>
             </div>
             <pre className="code-block" style={{ marginBottom: "0.65rem" }}>
 {[
-  `Token ID:     ${minted.id}`,
-  `Subject:      ${minted.subject}`,
-  `Trust Tier:   ${minted.trustTier}`,
-  `Granted:      ${minted.granted.join(", ")}`,
-  `Stripped:     ${minted.stripped.join(", ")} (blocked by trust or person-only policy)`,
-  `One-Time Key: ${minted.rawPreview}`
+  `Token ID:       ${minted.id}`,
+  `Subject:        ${minted.subject}`,
+  `Effective Tier: ${minted.trustTier}`,
+  `PKCE S256:      ${minted.pkceChallenge}`,
+  `Granted:        ${minted.granted.join(", ")}`,
+  `Stripped:       ${minted.stripped.join(", ")} (blocked by trust or person-only policy)`,
+  `One-Time Key:   ${minted.rawToken}`
 ].join("\n")}
             </pre>
             {redeemLog ? (
@@ -237,13 +435,70 @@ export function McpAuthConsole({ snapshot, role }: McpAuthConsoleProps) {
         ) : null}
       </section>
 
+      {/* Live MCP RPC Playground */}
+      <section className="card">
+        <div className="card-head">
+          <div>
+            <h2 className="card-title">Live Streamable HTTP MCP Playground</h2>
+            <p className="card-sub">
+              Send real JSON-RPC 2.0 <code>tools/call</code> requests to the deployed Cloud MCP endpoint. Redeem a one-time token above to test authenticated writes or test <code>pr/merge</code> to verify the <code>-32003 person_only</code> wall.
+            </p>
+          </div>
+          <span className={`pill ${activeLease ? "pill-pass" : "pill-info"}`}>
+            {activeLease ? `Authenticated: ${activeLease.leaseId}` : "Anonymous (Public Reads)"}
+          </span>
+        </div>
+
+        <div className="grid-3" style={{ alignItems: "end", marginBottom: "0.85rem" }}>
+          <div>
+            <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginBottom: "0.25rem" }}>
+              MCP Tool
+            </label>
+            <select
+              className="select"
+              value={playgroundTool}
+              onChange={(e) => setPlaygroundTool(e.target.value as PlaygroundTool)}
+            >
+              <option value="trust_policy_explain">trust_policy_explain (public read)</option>
+              <option value="wiki_search">wiki_search (public read)</option>
+              <option value="mythical_history_outline">mythical_history_outline (public read)</option>
+              <option value="cache_stats">cache_stats (public read)</option>
+              <option value="todos_list">todos_list (public read)</option>
+              <option value="todo_draft">todo_draft (requires redeemed lease)</option>
+              <option value="artifact_put">artifact_put (isolated untrusted/ write)</option>
+              <option value="pr/merge">pr/merge (verify -32003 person_only block)</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginBottom: "0.25rem" }}>
+              Query / Payload Input
+            </label>
+            <input
+              className="input"
+              value={playgroundQuery}
+              onChange={(e) => setPlaygroundQuery(e.target.value)}
+              placeholder="Search term or TODO title"
+            />
+          </div>
+          <button className="btn btn-primary" disabled={playgroundBusy} onClick={() => void handleRunPlayground()}>
+            {playgroundBusy ? "Calling MCP..." : "Execute Live MCP RPC"}
+          </button>
+        </div>
+
+        {playgroundOutput ? (
+          <pre className="code-block" style={{ maxHeight: "300px", overflow: "auto" }}>
+            {playgroundOutput}
+          </pre>
+        ) : null}
+      </section>
+
       {/* Tool Catalog */}
       <section className="card">
         <div className="card-head">
           <div>
             <h2 className="card-title">Cloud MCP Tool Catalog ({snapshot.mcpTools.length} tools)</h2>
             <p className="card-sub">
-              Every agent write attributes as <code>&lt;login&gt; (agent)</code>. Person-only actions ({snapshot.personOnlyActions.join(", ")}) are never exposed.
+              Every agent write carries verified agent attribution. Person-only actions ({snapshot.personOnlyActions.join(", ")}) are never exposed.
             </p>
           </div>
         </div>

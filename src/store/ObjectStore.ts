@@ -1,6 +1,15 @@
-import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { createHash, randomBytes } from "node:crypto"
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+  writeFileSync
+} from "node:fs"
+import { dirname, join, resolve } from "node:path"
 import {
   type TrustTier,
   type VerifiedExecution,
@@ -10,6 +19,8 @@ import {
 export const DEFAULT_CLOUD_OBJECT_STORE_ENDPOINT = "https://build.smithers.sh"
 export const DEFAULT_ARTIFACTS_INTERNAL_ENDPOINT = "http://artifacts.smithers.internal"
 export const MAX_ARTIFACT_BYTES = 512 * 1024 * 1024 // 512 MiB
+export const DEFAULT_UNTRUSTED_MAX_OBJECTS_PER_ACTOR = 100
+export const DEFAULT_UNTRUSTED_MAX_BYTES_PER_ACTOR = 10 * 1024 * 1024 // 10 MiB
 
 const ARTIFACT_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/
 const DIGEST_RE = /^[0-9a-f]{64}$/
@@ -44,6 +55,7 @@ export interface StoreStats {
   readonly endpoint: string
   readonly localRoot: string
   readonly casObjects: number
+  readonly untrustedCasObjects: number
   readonly actionCacheEntries: number
   readonly trustedArtifacts: number
   readonly untrustedArtifacts: number
@@ -55,8 +67,10 @@ export class ObjectStoreError extends Error {
     | "invalid_name"
     | "invalid_digest"
     | "too_large"
+    | "quota_exceeded"
     | "cache_write_forbidden"
     | "integrity_mismatch"
+    | "forbidden"
     | "not_found"
 
   constructor(code: ObjectStoreError["code"], message: string) {
@@ -70,17 +84,34 @@ function sha256Bytes(data: Buffer): string {
   return createHash("sha256").update(data).digest("hex")
 }
 
+function atomicWriteFile(targetPath: string, data: Buffer | string): void {
+  const parent = dirname(targetPath)
+  mkdirSync(parent, { recursive: true })
+  const tmpPath = `${targetPath}.tmp-${process.pid}-${randomBytes(6).toString("hex")}`
+  try {
+    writeFileSync(tmpPath, data)
+    renameSync(tmpPath, targetPath)
+  } catch (err) {
+    try {
+      unlinkSync(tmpPath)
+    } catch {
+      // ignore cleanup error
+    }
+    throw err
+  }
+}
+
 export function validateArtifactName(name: string): void {
-  if (!ARTIFACT_NAME_RE.test(name)) {
+  if (typeof name !== "string" || !ARTIFACT_NAME_RE.test(name)) {
     throw new ObjectStoreError(
       "invalid_name",
-      `Artifact name must match ${ARTIFACT_NAME_RE.source}: received "${name}"`
+      `Artifact name must match ${ARTIFACT_NAME_RE.source}: received "${String(name)}"`
     )
   }
 }
 
 export function validateDigest(digest: string): void {
-  if (!DIGEST_RE.test(digest)) {
+  if (typeof digest !== "string" || !DIGEST_RE.test(digest)) {
     throw new ObjectStoreError("invalid_digest", `Expected 64-char lowercase hex SHA-256 digest`)
   }
 }
@@ -94,22 +125,37 @@ export function validateDigest(digest: string): void {
  *   artifact pointers.
  * - Untrusted community executions (`untrusted:community`) receive full read-only
  *   cache hits from `/ac` and `/cas`, and write artifacts strictly to an isolated
- *   `untrusted/<actor>/<sha>/` namespace so cache poisoning is impossible.
+ *   `untrusted-cas/` blob directory and `untrusted/<actor>/<sha>/` namespace with
+ *   per-actor quotas so cache poisoning and shared-CAS exhaustion are impossible.
  */
 export class SharedObjectStore {
   readonly rootDir: string
   readonly endpoint: string
   private readonly casDir: string
+  private readonly untrustedCasDir: string
   private readonly acDir: string
   private readonly artifactsIndexPath: string
+  private readonly maxUntrustedObjectsPerActor: number
+  private readonly maxUntrustedBytesPerActor: number
 
-  constructor(options: { readonly rootDir: string; readonly endpoint?: string }) {
+  constructor(options: {
+    readonly rootDir: string
+    readonly endpoint?: string
+    readonly maxUntrustedObjectsPerActor?: number
+    readonly maxUntrustedBytesPerActor?: number
+  }) {
     this.rootDir = resolve(options.rootDir)
     this.endpoint = (options.endpoint ?? DEFAULT_CLOUD_OBJECT_STORE_ENDPOINT).replace(/\/+$/, "")
     this.casDir = join(this.rootDir, "cas")
+    this.untrustedCasDir = join(this.rootDir, "untrusted-cas")
     this.acDir = join(this.rootDir, "ac")
     this.artifactsIndexPath = join(this.rootDir, "artifacts-index.json")
+    this.maxUntrustedObjectsPerActor =
+      options.maxUntrustedObjectsPerActor ?? DEFAULT_UNTRUSTED_MAX_OBJECTS_PER_ACTOR
+    this.maxUntrustedBytesPerActor =
+      options.maxUntrustedBytesPerActor ?? DEFAULT_UNTRUSTED_MAX_BYTES_PER_ACTOR
     mkdirSync(this.casDir, { recursive: true })
+    mkdirSync(this.untrustedCasDir, { recursive: true })
     mkdirSync(this.acDir, { recursive: true })
   }
 
@@ -121,7 +167,36 @@ export class SharedObjectStore {
   }
 
   private writeIndex(entries: ReadonlyArray<ArtifactMetadata>): void {
-    writeFileSync(this.artifactsIndexPath, `${JSON.stringify(entries, null, 2)}\n`, "utf8")
+    atomicWriteFile(this.artifactsIndexPath, `${JSON.stringify(entries, null, 2)}\n`)
+  }
+
+  private writeBlobToDir(dir: string, buf: Buffer): string {
+    const digest = sha256Bytes(buf)
+    const target = join(dir, digest)
+    if (existsSync(target)) {
+      const existing = readFileSync(target)
+      if (sha256Bytes(existing) === digest) {
+        return digest
+      }
+      // Existing blob is corrupt or partial: atomically repair it.
+    }
+    atomicWriteFile(target, buf)
+    return digest
+  }
+
+  private readBlobFromDir(dir: string, digest: string): Buffer | null {
+    validateDigest(digest)
+    const target = join(dir, digest)
+    if (!existsSync(target)) return null
+    const buf = readFileSync(target)
+    const actual = sha256Bytes(buf)
+    if (actual !== digest) {
+      throw new ObjectStoreError(
+        "integrity_mismatch",
+        `CAS integrity check failed for ${digest}: actual ${actual}`
+      )
+    }
+    return buf
   }
 
   putCas(data: Buffer | string, execution: VerifiedExecution): string {
@@ -136,27 +211,11 @@ export class SharedObjectStore {
     if (buf.byteLength > MAX_ARTIFACT_BYTES) {
       throw new ObjectStoreError("too_large", `Object exceeds ${MAX_ARTIFACT_BYTES} bytes`)
     }
-    const digest = sha256Bytes(buf)
-    const target = join(this.casDir, digest)
-    if (!existsSync(target)) {
-      writeFileSync(target, buf)
-    }
-    return digest
+    return this.writeBlobToDir(this.casDir, buf)
   }
 
   getCas(digest: string): Buffer | null {
-    validateDigest(digest)
-    const target = join(this.casDir, digest)
-    if (!existsSync(target)) return null
-    const buf = readFileSync(target)
-    const actual = sha256Bytes(buf)
-    if (actual !== digest) {
-      throw new ObjectStoreError(
-        "integrity_mismatch",
-        `CAS integrity check failed for ${digest}: actual ${actual}`
-      )
-    }
-    return buf
+    return this.readBlobFromDir(this.casDir, digest)
   }
 
   putActionCache(
@@ -184,7 +243,7 @@ export class SharedObjectStore {
       commitSha: execution.commitSha,
       recordedAt: new Date().toISOString()
     }
-    writeFileSync(join(this.acDir, `${actionKey}.json`), `${JSON.stringify(record, null, 2)}\n`, "utf8")
+    atomicWriteFile(join(this.acDir, `${actionKey}.json`), `${JSON.stringify(record, null, 2)}\n`)
     return record
   }
 
@@ -196,7 +255,29 @@ export class SharedObjectStore {
     validateDigest(actionKey)
     const recordPath = join(this.acDir, `${actionKey}.json`)
     if (!existsSync(recordPath)) return null
-    const record = JSON.parse(readFileSync(recordPath, "utf8")) as CacheEntryRecord
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(readFileSync(recordPath, "utf8"))
+    } catch {
+      throw new ObjectStoreError("integrity_mismatch", `Corrupt action cache record for ${actionKey}`)
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new ObjectStoreError("integrity_mismatch", `Invalid action cache record shape for ${actionKey}`)
+    }
+    const rec = parsed as Record<string, unknown>
+    if (
+      rec.actionKey !== actionKey ||
+      typeof rec.casDigest !== "string" ||
+      !DIGEST_RE.test(rec.casDigest) ||
+      typeof rec.exitCode !== "number" ||
+      !Number.isFinite(rec.exitCode) ||
+      typeof rec.durationMs !== "number" ||
+      !Number.isFinite(rec.durationMs) ||
+      (rec.trustTier !== "trusted:maintainer" && rec.trustTier !== "trusted:sandbox")
+    ) {
+      throw new ObjectStoreError("integrity_mismatch", `Action cache record failed schema/key binding for ${actionKey}`)
+    }
+    const record = parsed as CacheEntryRecord
     const payload = this.getCas(record.casDigest)
     if (!payload) return null
     return { record, payload }
@@ -204,9 +285,9 @@ export class SharedObjectStore {
 
   /**
    * Stores an artifact in the shared object store.
-   * Trusted runs write under `trusted/<sha>/<name>`.
-   * Untrusted community runs are allowed and encouraged, but strictly isolated
-   * under `untrusted/<actor>/<sha>/<name>` and never overwrite trusted pointers.
+   * Trusted runs write blobs into `cas/` and pointers under `trusted/<sha>/<name>`.
+   * Untrusted community runs are allowed and encouraged, but write blobs strictly into
+   * quota-bounded `untrusted-cas/` and pointers under `untrusted/<actor>/<sha>/<name>`.
    */
   putArtifact(
     name: string,
@@ -224,14 +305,33 @@ export class SharedObjectStore {
     }
 
     const policy = evaluateExecutionPolicy(options.execution)
-    const digest = sha256Bytes(buf)
-    const casTarget = join(this.casDir, digest)
-    if (!existsSync(casTarget)) {
-      writeFileSync(casTarget, buf)
-    }
-
+    const isTrustedWrite = policy.allowTrustedArtifactWrite && options.execution.trusted
+    const index = this.readIndex()
     const namespace = policy.artifactNamespace
     const key = `${namespace}/${name}`
+
+    if (!isTrustedWrite) {
+      const actorEntries = index.filter(
+        (entry) => !entry.trusted && entry.actor === options.execution.actor && entry.key !== key
+      )
+      const actorBytes = actorEntries.reduce((sum, entry) => sum + entry.bytes, 0)
+      if (actorEntries.length >= this.maxUntrustedObjectsPerActor) {
+        throw new ObjectStoreError(
+          "quota_exceeded",
+          `Untrusted actor ${options.execution.actor} exceeded object quota (${this.maxUntrustedObjectsPerActor})`
+        )
+      }
+      if (actorBytes + buf.byteLength > this.maxUntrustedBytesPerActor) {
+        throw new ObjectStoreError(
+          "quota_exceeded",
+          `Untrusted actor ${options.execution.actor} exceeded byte quota (${this.maxUntrustedBytesPerActor} bytes)`
+        )
+      }
+    }
+
+    const blobDir = isTrustedWrite ? this.casDir : this.untrustedCasDir
+    const digest = this.writeBlobToDir(blobDir, buf)
+
     const metadata: ArtifactMetadata = {
       name,
       namespace,
@@ -240,47 +340,70 @@ export class SharedObjectStore {
       bytes: buf.byteLength,
       contentType: options.contentType,
       visibility: options.visibility ?? "public",
-      trustTier: options.execution.effectiveTier,
-      trusted: options.execution.trusted,
+      trustTier: isTrustedWrite ? options.execution.effectiveTier : "untrusted:community",
+      trusted: isTrustedWrite,
       actor: options.execution.actor,
       commitSha: options.execution.commitSha,
       createdAt: new Date().toISOString()
     }
 
-    const index = this.readIndex().filter((entry) => entry.key !== key)
-    index.unshift(metadata)
-    this.writeIndex(index)
+    const nextIndex = index.filter((entry) => entry.key !== key)
+    nextIndex.unshift(metadata)
+    this.writeIndex(nextIndex)
     return metadata
   }
 
-  listArtifacts(filter: { readonly trustedOnly?: boolean; readonly visibility?: "public" | "private" } = {}): ReadonlyArray<ArtifactMetadata> {
+  listArtifacts(
+    filter: {
+      readonly trustedOnly?: boolean
+      readonly visibility?: "public" | "private"
+      readonly includePrivate?: boolean
+    } = {}
+  ): ReadonlyArray<ArtifactMetadata> {
     return this.readIndex().filter((entry) => {
       if (filter.trustedOnly && !entry.trusted) return false
-      if (filter.visibility && entry.visibility !== filter.visibility) return false
+      if (filter.visibility) {
+        return entry.visibility === filter.visibility
+      }
+      if (!filter.includePrivate && entry.visibility !== "public") {
+        return false
+      }
       return true
     })
   }
 
-  getArtifact(key: string): { readonly metadata: ArtifactMetadata; readonly data: Buffer } | null {
+  getArtifact(
+    key: string,
+    options: { readonly allowPrivate?: boolean } = {}
+  ): { readonly metadata: ArtifactMetadata; readonly data: Buffer } | null {
     const entry = this.readIndex().find((item) => item.key === key)
     if (!entry) return null
-    const data = this.getCas(entry.sha256)
+    if (entry.visibility === "private" && !options.allowPrivate) {
+      throw new ObjectStoreError("forbidden", `Private artifact ${key} requires authorized read access`)
+    }
+    const blobDir = entry.trusted ? this.casDir : this.untrustedCasDir
+    const data = this.readBlobFromDir(blobDir, entry.sha256)
     if (!data) return null
     return { metadata: entry, data }
   }
 
   stats(): StoreStats {
     const casFiles = readdirSync(this.casDir).filter((f) => DIGEST_RE.test(f))
+    const untrustedCasFiles = readdirSync(this.untrustedCasDir).filter((f) => DIGEST_RE.test(f))
     const acFiles = readdirSync(this.acDir).filter((f) => f.endsWith(".json"))
     const index = this.readIndex()
     let totalBytes = 0
     for (const file of casFiles) {
       totalBytes += statSync(join(this.casDir, file)).size
     }
+    for (const file of untrustedCasFiles) {
+      totalBytes += statSync(join(this.untrustedCasDir, file)).size
+    }
     return {
       endpoint: this.endpoint,
       localRoot: this.rootDir,
       casObjects: casFiles.length,
+      untrustedCasObjects: untrustedCasFiles.length,
       actionCacheEntries: acFiles.length,
       trustedArtifacts: index.filter((item) => item.trusted).length,
       untrustedArtifacts: index.filter((item) => !item.trusted).length,

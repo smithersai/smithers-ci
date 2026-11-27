@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import type { FactorySnapshot } from "../data/generatedSnapshot.ts"
 import type { RoleView } from "./HomeView.tsx"
 
@@ -9,20 +9,120 @@ interface FactoryBoardViewProps {
 
 export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
   const [todos, setTodos] = useState(() => [...snapshot.todos])
+  const [issues, setIssues] = useState(() => [...snapshot.issues])
+  const [changesets, setChangesets] = useState(() => [...snapshot.changesets])
+  const [pulls, setPulls] = useState(() => [...snapshot.pulls])
+  const [artifacts, setArtifacts] = useState(() => [...snapshot.artifacts])
+  const [liveSynced, setLiveSynced] = useState(false)
   const [newTodoTitle, setNewTodoTitle] = useState("")
   const [newTodoBody, setNewTodoBody] = useState("")
+  const [draftBusy, setDraftBusy] = useState(false)
   const [actionBanner, setActionBanner] = useState<string | null>(null)
   const [artifactFilter, setArtifactFilter] = useState<"all" | "trusted" | "untrusted">("all")
 
-  const handleDraftTodo = (e: React.FormEvent) => {
+  useEffect(() => {
+    let cancelled = false
+    const hydrate = async () => {
+      try {
+        const res = await fetch("/api/factory")
+        const ct = res.headers.get("content-type") ?? ""
+        if (!res.ok || !ct.includes("application/json")) return
+        const data = (await res.json()) as {
+          todos?: FactorySnapshot["todos"]
+          issues?: FactorySnapshot["issues"]
+          changesets?: FactorySnapshot["changesets"]
+          pulls?: FactorySnapshot["pulls"]
+          artifacts?: FactorySnapshot["artifacts"]
+        }
+        if (cancelled) return
+        if (Array.isArray(data.todos)) setTodos([...data.todos])
+        if (Array.isArray(data.issues)) setIssues([...data.issues])
+        if (Array.isArray(data.changesets)) setChangesets([...data.changesets])
+        if (Array.isArray(data.pulls)) setPulls([...data.pulls])
+        if (Array.isArray(data.artifacts)) setArtifacts([...data.artifacts])
+        setLiveSynced(true)
+      } catch {
+        // Static Vite dev mode without Worker backend
+      }
+    }
+    void hydrate()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleDraftTodo = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (newTodoTitle.trim().length < 3) return
+    const title = newTodoTitle.trim()
+    if (title.length < 3) return
+    const body = newTodoBody.trim() || "Drafted via Smithers Cloud MCP todo_draft."
     const actor = role === "maintainer" ? "roninjin10" : role === "contributor" ? "alice-dev" : "guest"
+    setDraftBusy(true)
+
+    try {
+      const mintRes = await fetch("/smithersai/smithers-ci/mcp/mint", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          subject: `agent:${actor}`,
+          trustTier: "untrusted:community",
+          scopes: ["mcp:read", "todo:draft"]
+        })
+      })
+      const ct = mintRes.headers.get("content-type") ?? ""
+      if (mintRes.ok && ct.includes("application/json")) {
+        const minted = (await mintRes.json()) as { token: string }
+        const exchRes = await fetch("/smithersai/smithers-ci/mcp/exchange", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token: minted.token })
+        })
+        if (exchRes.ok) {
+          const lease = (await exchRes.json()) as { leaseToken: string }
+          const rpcRes = await fetch("/smithersai/smithers-ci/mcp", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: `Bearer ${lease.leaseToken}`
+            },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: Date.now(),
+              method: "tools/call",
+              params: {
+                name: "todo_draft",
+                arguments: { title, body, priority: "P1" }
+              }
+            })
+          })
+          if (rpcRes.ok) {
+            const rpc = (await rpcRes.json()) as {
+              result?: { structuredContent?: { todo?: FactorySnapshot["todos"][number] } }
+            }
+            const created = rpc.result?.structuredContent?.todo
+            if (created) {
+              setTodos((prev) => [created, ...prev.filter((t) => t.id !== created.id)])
+              setLiveSynced(true)
+              setNewTodoTitle("")
+              setNewTodoBody("")
+              setActionBanner(
+                `Persisted ${created.id} to live Cloudflare Durable Object SQLite via single-use smo_ auth and MCP todo_draft. Committing remains person-only.`
+              )
+              setDraftBusy(false)
+              return
+            }
+          }
+        }
+      }
+    } catch {
+      // Fallback to local state in offline Vite dev
+    }
+
     setTodos((prev) => [
       {
         id: `todo-${prev.length + 1}`,
-        title: newTodoTitle.trim(),
-        body: newTodoBody.trim() || "Drafted via Smithers Cloud MCP todo_draft.",
+        title,
+        body,
         status: "draft",
         priority: "P1",
         author: `${actor} (agent)`,
@@ -35,6 +135,7 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
     setNewTodoTitle("")
     setNewTodoBody("")
     setActionBanner("Drafted TODO on public stack via todo_draft. Committing a TODO remains person-only.")
+    setDraftBusy(false)
   }
 
   const handleCommitTodo = (id: string) => {
@@ -46,7 +147,7 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
     setActionBanner(`Committed ${id} in person as roninjin10.`)
   }
 
-  const visibleArtifacts = snapshot.artifacts.filter((a) => {
+  const visibleArtifacts = artifacts.filter((a) => {
     if (artifactFilter === "trusted") return a.trusted
     if (artifactFilter === "untrusted") return !a.trusted
     return true
@@ -74,10 +175,15 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
               Visible to everyone. Agents draft TODOs over Cloud MCP while maintainers commit them in person.
             </p>
           </div>
-          <span className="pill pill-pass">{todos.length} public items</span>
+          <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
+            <span className={`pill ${liveSynced ? "pill-pass" : "pill-info"}`}>
+              {liveSynced ? "Live SQLite DO" : "Snapshot"}
+            </span>
+            <span className="pill pill-pass">{todos.length} public items</span>
+          </div>
         </div>
 
-        <form onSubmit={handleDraftTodo} className="grid-3" style={{ marginBottom: "1rem", alignItems: "end" }}>
+        <form onSubmit={(e) => void handleDraftTodo(e)} className="grid-3" style={{ marginBottom: "1rem", alignItems: "end" }}>
           <div>
             <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginBottom: "0.25rem" }}>
               Draft TODO title (MCP `todo_draft`)
@@ -100,8 +206,8 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
               placeholder="Acceptance criteria and backpressure gate"
             />
           </div>
-          <button className="btn btn-primary" type="submit">
-            Draft TODO via MCP
+          <button className="btn btn-primary" type="submit" disabled={draftBusy}>
+            {draftBusy ? "Drafting via MCP..." : "Draft TODO via MCP"}
           </button>
         </form>
 
@@ -120,7 +226,7 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
             <tbody>
               {todos.map((todo) => (
                 <tr key={todo.id}>
-                  <td>
+                  <td className="nowrap">
                     <code>{todo.id}</code>
                   </td>
                   <td>
@@ -171,7 +277,7 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
               Linear changeset stack showing trusted sandbox gates vs untrusted community previews
             </p>
           </div>
-          <span className="pill">{snapshot.changesets.length} changesets · {snapshot.pulls.length} PRs</span>
+          <span className="pill">{changesets.length} changesets · {pulls.length} PRs</span>
         </div>
 
         <div className="table-wrap">
@@ -187,9 +293,9 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
               </tr>
             </thead>
             <tbody>
-              {snapshot.changesets.map((cs) => (
+              {changesets.map((cs) => (
                 <tr key={cs.id}>
-                  <td>
+                  <td className="nowrap">
                     <code>#{cs.stackPosition} {cs.id}</code>
                     {cs.parentId ? (
                       <div style={{ fontSize: "0.73rem", color: "var(--muted)" }}>parent: {cs.parentId}</div>
@@ -206,8 +312,8 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
                       {cs.trustTier}
                     </span>
                   </td>
-                  <td className="num" style={{ fontWeight: 700, color: "var(--lh-pass)" }}>
-                    {cs.auditScore}/100
+                  <td className="num" style={{ fontWeight: 700, color: cs.auditScore >= 90 ? "var(--lh-pass)" : "var(--lh-avg)" }}>
+                    {cs.auditScore > 0 ? `${cs.auditScore}/100` : "Pending"}
                   </td>
                   <td>
                     <span className={`pill ${cs.gateSatisfied ? "pill-pass" : "pill-warn"}`}>
@@ -230,7 +336,7 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
           <div>
             <h2 className="card-title">Shared Smithers Cloud Object Store Artifacts</h2>
             <p className="card-sub">
-              Endpoint: <code>{snapshot.objectStoreEndpoint}</code> · Trusted artifacts live under <code>trusted/</code>, community previews isolate under <code>untrusted/</code>
+              Endpoint: <code>{snapshot.objectStoreEndpoint}</code> · Trusted artifacts live under <code>trusted/</code> and community previews isolate under <code>untrusted/</code>
             </p>
           </div>
           <div className="role-switcher">
@@ -300,9 +406,9 @@ export function FactoryBoardView({ snapshot, role }: FactoryBoardViewProps) {
               </tr>
             </thead>
             <tbody>
-              {snapshot.issues.map((issue) => (
+              {issues.map((issue) => (
                 <tr key={issue.number}>
-                  <td>
+                  <td className="nowrap">
                     <code>#{issue.number}</code>
                   </td>
                   <td>

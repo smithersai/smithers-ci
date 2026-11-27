@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import type { FactorySnapshot } from "../data/generatedSnapshot.ts"
 import { LighthouseGauge } from "./LighthouseGauge.tsx"
+import { ReplayShowcaseCard } from "./ReplayShowcaseCard.tsx"
 
 export type RoleView = "maintainer" | "contributor" | "viewer"
 
@@ -258,6 +259,9 @@ export function HomeView({ snapshot, role, onNavigate, onRequestWaitlist }: Home
           </div>
         </div>
       </section>
+
+      {/* Dogfooding Measured Replay Showcase */}
+      <ReplayShowcaseCard />
 
       {/* Four Pillar Cards */}
       <section className="card">

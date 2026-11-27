@@ -1,8 +1,12 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
-import { join, relative, resolve } from "node:path"
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs"
+import { join, relative, resolve, sep } from "node:path"
 import { runBackpressureAudit } from "../audit/AuditEngine.ts"
 import { renderLighthouseHtml } from "../audit/LighthouseHtml.ts"
-import { OneTimeTokenStore, type SessionLease, type TokenScope } from "../auth/OneTimeToken.ts"
+import {
+  OneTimeTokenStore,
+  type StoredSessionLease,
+  type TokenScope
+} from "../auth/OneTimeToken.ts"
 import { FactoryActionError, FactoryState } from "../factory/FactoryState.ts"
 import { MythicalHistorySequencer } from "../history/MythicalHistory.ts"
 import { SharedObjectStore } from "../store/ObjectStore.ts"
@@ -15,6 +19,42 @@ import {
 import { loadWikiGraph, searchWiki } from "../wiki/WikiEngine.ts"
 
 export const MCP_PROTOCOL_VERSION = "2025-11-25"
+const MAX_REPO_READ_BYTES = 512 * 1024 // 512 KiB
+const MAX_REPO_WALK_DEPTH = 12
+
+const EXCLUDED_TOP_SEGMENTS = new Set([
+  "node_modules",
+  ".git",
+  ".jj",
+  "dist",
+  ".wrangler",
+  ".alchemy",
+  ".flows"
+])
+
+const EXCLUDED_PREFIXES = [
+  ".smithers/object-store",
+  ".smithers/tokens",
+  ".smithers/reviews",
+  ".smithers/cache",
+  ".smithers/reports",
+  ".smithers/reports-untrusted"
+]
+
+export function isExcludedRepoPath(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, "/").replace(/^\/+/, "")
+  if (!normalized || normalized === ".") return true
+  const segments = normalized.split("/")
+  for (const seg of segments) {
+    if (seg === "" || seg === "." || seg === "..") return true
+    if (EXCLUDED_TOP_SEGMENTS.has(seg)) return true
+    if (seg === ".env" || seg.startsWith(".env.")) return true
+  }
+  for (const prefix of EXCLUDED_PREFIXES) {
+    if (normalized === prefix || normalized.startsWith(`${prefix}/`)) return true
+  }
+  return false
+}
 
 export interface McpToolDefinition {
   readonly name: string
@@ -57,25 +97,25 @@ export const MCP_TOOLS: ReadonlyArray<McpToolDefinition> = [
   },
   {
     name: "repo_read_file",
-    description: "Read a UTF-8 file from the repository with strict path containment.",
+    description: "Read a UTF-8 file from the repository with strict symlink and path containment.",
     requiredScope: null,
     inputSchema: { type: "object", required: ["path"], properties: { path: { type: "string" } } }
   },
   {
     name: "audit_run",
-    description: "Run the Lighthouse-style 6-category backpressure audit and upload JSON + HTML reports to the shared object store.",
+    description: "Run the Lighthouse-style 6-category backpressure audit. Pass storeArtifacts: true with an artifact write scope to store JSON + HTML reports.",
     requiredScope: null,
     inputSchema: { type: "object", properties: { storeArtifacts: { type: "boolean" } } }
   },
   {
     name: "artifacts_list",
-    description: "List artifacts stored in the shared Smithers Cloud object store.",
+    description: "List public artifacts stored in the shared Smithers Cloud object store (private artifacts require a trusted artifact:read lease).",
     requiredScope: null,
     inputSchema: { type: "object", properties: { trustedOnly: { type: "boolean" } } }
   },
   {
     name: "artifact_put",
-    description: "Upload a named artifact to the shared object store (trusted namespace for controlled sandboxes/maintainers, isolated untrusted namespace for community).",
+    description: "Upload a named artifact to the shared object store (trusted/ requires both trusted tier and artifact:write:trusted scope; otherwise isolated under untrusted/).",
     requiredScope: "artifact:write:untrusted",
     inputSchema: {
       type: "object",
@@ -129,7 +169,7 @@ export const MCP_TOOLS: ReadonlyArray<McpToolDefinition> = [
   },
   {
     name: "issue_create",
-    description: "Open a public issue attributed as <actor> (agent). Policy smithers:* labels are stripped.",
+    description: "Open a public issue attributed to the authenticated agent identity. Policy smithers:* labels are stripped.",
     requiredScope: "issue:create",
     inputSchema: {
       type: "object",
@@ -220,33 +260,40 @@ export const MCP_TOOLS: ReadonlyArray<McpToolDefinition> = [
   }
 ]
 
-function walkRepoFiles(root: string, current: string, out: string[], limit = 300): void {
-  if (out.length >= limit) return
+function walkRepoFiles(
+  root: string,
+  current: string,
+  out: string[],
+  limit = 300,
+  depth = 0
+): void {
+  if (out.length >= limit || depth > MAX_REPO_WALK_DEPTH) return
   const entries = readdirSync(current).sort()
   for (const name of entries) {
     if (out.length >= limit) return
-    if (
-      name === "node_modules" ||
-      name === ".git" ||
-      name === ".jj" ||
-      name === "dist" ||
-      name === ".smithers/object-store"
-    ) {
+    const full = join(current, name)
+    const rel = relative(root, full).replace(/\\/g, "/")
+    if (isExcludedRepoPath(rel)) continue
+    let st
+    try {
+      st = lstatSync(full)
+    } catch {
       continue
     }
-    const full = join(current, name)
-    const rel = relative(root, full)
-    if (rel.startsWith(".smithers/object-store") || rel.startsWith(".smithers/tokens")) continue
-    const st = statSync(full)
+    // Never follow symlinks or read non-regular files (FIFOs, sockets, devices).
+    if (st.isSymbolicLink()) continue
     if (st.isDirectory()) {
-      walkRepoFiles(root, full, out, limit)
-    } else {
+      walkRepoFiles(root, full, out, limit, depth + 1)
+    } else if (st.isFile()) {
       out.push(rel)
     }
   }
 }
 
-function executionFromLease(lease: SessionLease | null, ctx: McpServerContext): VerifiedExecution {
+function executionFromLease(
+  lease: StoredSessionLease | null,
+  ctx: McpServerContext
+): VerifiedExecution {
   if (!lease) {
     return {
       effectiveTier: "untrusted:community",
@@ -274,19 +321,39 @@ function executionFromLease(lease: SessionLease | null, ctx: McpServerContext): 
     trusted: lease.trustTier !== "untrusted:community",
     downgraded: false,
     downgradeReason: null,
-    verifiedAt: new Date().toISOString()
+    verifiedAt: new Date().toISOString(),
+    expiresAt: lease.expiresAt
   }
 }
 
-function hasRequiredScope(lease: SessionLease | null, required: TokenScope | null): boolean {
+function downgradeToUntrusted(execution: VerifiedExecution, reason: string): VerifiedExecution {
+  return {
+    ...execution,
+    effectiveTier: "untrusted:community",
+    trusted: false,
+    downgraded: true,
+    downgradeReason: reason
+  }
+}
+
+function hasRequiredScope(
+  lease: StoredSessionLease | null,
+  required: TokenScope | null
+): boolean {
   if (required === null) return true
   if (!lease) return false
   if (lease.scopes.includes(required)) return true
-  // Trusted artifact write subsumes untrusted artifact write.
   if (required === "artifact:write:untrusted" && lease.scopes.includes("artifact:write:trusted")) {
     return true
   }
   return false
+}
+
+class McpScopeError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "McpScopeError"
+  }
 }
 
 export class SmithersCloudMcpServer {
@@ -321,23 +388,39 @@ export class SmithersCloudMcpServer {
   }
 
   oauthAuthorizationServerMetadata() {
+    const exchangeEndpoint = `${this.ctx.baseUrl}/${this.ctx.repository}/mcp/exchange`
     return {
       issuer: this.ctx.baseUrl,
-      authorization_endpoint: `${this.ctx.baseUrl}/api/mcp/oauth/authorize`,
-      token_endpoint: `${this.ctx.baseUrl}/api/mcp/oauth/token`,
-      registration_endpoint: `${this.ctx.baseUrl}/api/mcp/oauth/register`,
-      one_time_exchange_endpoint: `${this.ctx.baseUrl}/${this.ctx.repository}/mcp/exchange`,
-      response_types_supported: ["code"],
-      grant_types_supported: ["authorization_code"],
+      token_endpoint: exchangeEndpoint,
+      one_time_exchange_endpoint: exchangeEndpoint,
+      mcp_endpoint: `${this.ctx.baseUrl}/${this.ctx.repository}/mcp`,
+      grant_types_supported: ["urn:smithers:params:oauth:grant-type:one-time-token"],
       code_challenge_methods_supported: ["S256"]
     }
   }
 
   handleRpc(request: JsonRpcRequest, authorizationHeader?: string | null): JsonRpcResponse {
+    if (!request || typeof request !== "object" || Array.isArray(request)) {
+      return {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32600, message: "Invalid JSON-RPC request object" }
+      }
+    }
     const id = request.id ?? null
 
-    let lease: SessionLease | null = null
-    if (authorizationHeader && authorizationHeader.startsWith("Bearer ")) {
+    let lease: StoredSessionLease | null = null
+    if (authorizationHeader !== undefined && authorizationHeader !== null && authorizationHeader !== "") {
+      if (typeof authorizationHeader !== "string" || !authorizationHeader.startsWith("Bearer ")) {
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: {
+            code: -32001,
+            message: "Authorization header must use Bearer <sms_...> format"
+          }
+        }
+      }
       const token = authorizationHeader.slice("Bearer ".length).trim()
       lease = this.ctx.tokens.verifyLease(token, this.ctx.repository)
       if (!lease) {
@@ -366,7 +449,7 @@ export class SmithersCloudMcpServer {
             tools: { listChanged: false }
           },
           instructions:
-            "Smithers CI Cloud MCP server. Public reads work anonymously. Write actions require a scoped lease redeemed from a one-time smo_ token or OAuth 2.1 PKCE grant. Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) are never callable by agents."
+            "Smithers CI Cloud MCP server. Public reads work anonymously. Write actions require a scoped lease redeemed from a one-time smo_ token. Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) are never callable by agents."
         }
       }
     }
@@ -386,9 +469,12 @@ export class SmithersCloudMcpServer {
     }
 
     if (request.method === "tools/call") {
-      const params = request.params ?? {}
+      const params =
+        request.params && typeof request.params === "object" && !Array.isArray(request.params)
+          ? request.params
+          : {}
       const toolName = typeof params.name === "string" ? params.name : ""
-      const args = (params.arguments && typeof params.arguments === "object"
+      const args = (params.arguments && typeof params.arguments === "object" && !Array.isArray(params.arguments)
         ? params.arguments
         : {}) as Record<string, unknown>
 
@@ -425,7 +511,7 @@ export class SmithersCloudMcpServer {
 
       const execution = executionFromLease(lease, this.ctx)
       try {
-        const output = this.executeTool(toolName, args, execution)
+        const output = this.executeTool(toolName, args, execution, lease)
         return {
           jsonrpc: "2.0",
           id,
@@ -436,7 +522,12 @@ export class SmithersCloudMcpServer {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        const code = err instanceof FactoryActionError && err.code === "person_only" ? -32003 : -32000
+        const code =
+          err instanceof FactoryActionError && err.code === "person_only"
+            ? -32003
+            : err instanceof McpScopeError
+              ? -32002
+              : -32000
         return {
           jsonrpc: "2.0",
           id,
@@ -448,14 +539,15 @@ export class SmithersCloudMcpServer {
     return {
       jsonrpc: "2.0",
       id,
-      error: { code: -32601, message: `Unsupported MCP method: ${request.method}` }
+      error: { code: -32601, message: `Unsupported MCP method: ${String(request.method)}` }
     }
   }
 
   private executeTool(
     name: string,
     args: Record<string, unknown>,
-    execution: VerifiedExecution
+    execution: VerifiedExecution,
+    lease: StoredSessionLease | null
   ): unknown {
     switch (name) {
       case "repo_tree": {
@@ -466,17 +558,46 @@ export class SmithersCloudMcpServer {
         return { repository: this.ctx.repository, ref: this.ctx.commitSha, paths: filtered }
       }
       case "repo_read_file": {
-        const relPath = String(args.path ?? "")
+        const relPath = typeof args.path === "string" ? args.path.trim() : ""
+        if (!relPath || relPath.includes("\0") || relPath.startsWith("/") || isExcludedRepoPath(relPath)) {
+          throw new Error("Path is excluded or escapes repository root")
+        }
         const resolvedRoot = resolve(this.ctx.repoRoot)
+        const realRoot = realpathSync(resolvedRoot)
         const target = resolve(resolvedRoot, relPath)
-        if (!target.startsWith(`${resolvedRoot}/`) || relPath.includes("..")) {
+        if (!target.startsWith(`${resolvedRoot}${sep}`)) {
           throw new Error("Path escapes repository root")
         }
-        if (!existsSync(target) || statSync(target).isDirectory()) {
+        if (!existsSync(target)) {
           throw new Error(`File not found: ${relPath}`)
         }
-        const content = readFileSync(target, "utf8")
-        return { path: relPath, bytes: Buffer.byteLength(content, "utf8"), content }
+        // Reject symlinks in ANY intermediate directory segment as well as the leaf file.
+        let walkCursor = resolvedRoot
+        const cleanRelSegments = relative(resolvedRoot, target).split(sep).filter(Boolean)
+        for (const seg of cleanRelSegments) {
+          walkCursor = join(walkCursor, seg)
+          const segStat = lstatSync(walkCursor)
+          if (segStat.isSymbolicLink()) {
+            throw new Error("Refusing to traverse symlinked path segment")
+          }
+        }
+        const lst = lstatSync(target)
+        if (!lst.isFile()) {
+          throw new Error("Refusing to read non-regular file")
+        }
+        const realTarget = realpathSync(target)
+        if (!realTarget.startsWith(`${realRoot}${sep}`)) {
+          throw new Error("Resolved path escapes repository root")
+        }
+        const realRel = relative(realRoot, realTarget).replace(/\\/g, "/")
+        if (isExcludedRepoPath(realRel)) {
+          throw new Error("Resolved path is in an excluded internal directory")
+        }
+        if (lst.size > MAX_REPO_READ_BYTES) {
+          throw new Error(`File exceeds maximum readable size of ${MAX_REPO_READ_BYTES} bytes`)
+        }
+        const content = readFileSync(realTarget, "utf8")
+        return { path: realRel, bytes: Buffer.byteLength(content, "utf8"), content }
       }
       case "audit_run": {
         const report = runBackpressureAudit({
@@ -484,16 +605,31 @@ export class SmithersCloudMcpServer {
           execution
         })
         let stored: { jsonKey: string; htmlKey: string } | null = null
-        if (args.storeArtifacts !== false) {
+        // Never implicitly write artifacts unless explicitly requested AND scope-authorized.
+        if (args.storeArtifacts === true) {
+          const canWriteTrusted =
+            execution.trusted && lease !== null && lease.scopes.includes("artifact:write:trusted")
+          const canWriteUntrusted =
+            lease !== null &&
+            (lease.scopes.includes("artifact:write:untrusted") ||
+              lease.scopes.includes("artifact:write:trusted"))
+          if (!canWriteUntrusted) {
+            throw new McpScopeError(
+              "audit_run with storeArtifacts: true requires artifact:write:untrusted or artifact:write:trusted scope"
+            )
+          }
+          const writeExec = canWriteTrusted
+            ? execution
+            : downgradeToUntrusted(execution, "lease lacks artifact:write:trusted scope")
           const jsonMeta = this.ctx.store.putArtifact("lighthouse-audit.json", JSON.stringify(report, null, 2), {
             contentType: "application/json",
             visibility: "public",
-            execution
+            execution: writeExec
           })
           const htmlMeta = this.ctx.store.putArtifact("lighthouse-audit.html", renderLighthouseHtml(report), {
             contentType: "text/html; charset=utf-8",
             visibility: "public",
-            execution
+            execution: writeExec
           })
           stored = { jsonKey: jsonMeta.key, htmlKey: htmlMeta.key }
         }
@@ -501,17 +637,30 @@ export class SmithersCloudMcpServer {
       }
       case "artifacts_list": {
         const trustedOnly = args.trustedOnly === true
-        return { artifacts: this.ctx.store.listArtifacts({ trustedOnly }) }
+        const includePrivate = Boolean(
+          lease &&
+            lease.trustTier !== "untrusted:community" &&
+            lease.scopes.includes("artifact:read")
+        )
+        return {
+          artifacts: this.ctx.store.listArtifacts({ trustedOnly, includePrivate })
+        }
       }
       case "artifact_put": {
         const artifactName = String(args.name ?? "")
         const content = String(args.content ?? "")
         const contentType = typeof args.contentType === "string" ? args.contentType : "text/plain; charset=utf-8"
         const visibility = args.visibility === "private" ? "private" : "public"
+        // Destination MUST match BOTH trust tier AND explicit artifact:write:trusted scope.
+        const canWriteTrusted =
+          execution.trusted && lease !== null && lease.scopes.includes("artifact:write:trusted")
+        const writeExec = canWriteTrusted
+          ? execution
+          : downgradeToUntrusted(execution, "lease lacks artifact:write:trusted scope")
         const meta = this.ctx.store.putArtifact(artifactName, content, {
           contentType,
           visibility,
-          execution
+          execution: writeExec
         })
         return { artifact: meta }
       }

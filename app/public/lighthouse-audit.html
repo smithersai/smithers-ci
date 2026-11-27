@@ -98,7 +98,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
 <main>
   <div class="topbar">
     <h1>Smithers CI Backpressure Audit Report</h1>
-    <div class="meta">smithersai/smithers-ci @ 46412bca49c3 · 2026-11-27T08:02:47.149Z</div>
+    <div class="meta">smithersai/smithers-ci @ 46412bca49c3 · 2026-11-27T08:38:08.485Z</div>
   </div>
 
   <div class="banner banner-trusted">
@@ -244,14 +244,14 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
       <span class="audit-title">Unit, Security &amp; Protocol Suites</span>
-      <span class="audit-value">22/22 passed</span>
+      <span class="audit-value">35/35 passed</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
       <p>Verifies trust isolation, one-time tokens, CAS integrity, audit scoring, wiki, history, and MCP tools.</p>
-      <ul class="evidence-list"><li><code>Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP</code></li><li><code>Observed 22 passing and 0 failing tests</code></li></ul>
+      <ul class="evidence-list"><li><code>Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP</code></li><li><code>Observed 35 passing and 0 failing tests</code></li></ul>
       
-      <div class="audit-meta">ID: <code>unit-integration-tests</code> · Weight: 4 · 586ms</div>
+      <div class="audit-meta">ID: <code>unit-integration-tests</code> · Weight: 4 · 740ms</div>
     </div>
   </details>
 
@@ -432,7 +432,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </summary>
     <div class="audit-body">
       <p>Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.</p>
-      <ul class="evidence-list"><li><code>Shared Object Store Cache Write (/ac, /cas) -&gt; ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache</code></li><li><code>Trusted Artifact Pointer Publication -&gt; ObjectStore.putArtifact namespace isolation</code></li><li><code>Merge / Release Gate Satisfaction -&gt; ExecutionTrust.evaluateGate</code></li><li><code>One-Time Sandbox Auth Token Minting -&gt; OneTimeTokenStore.mint</code></li><li><code>Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -&gt; ExecutionTrust.authorizeAction + McpServer guard</code></li></ul>
+      <ul class="evidence-list"><li><code>Shared Object Store Cache Write (/ac, /cas) -&gt; ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache</code></li><li><code>Trusted Artifact Pointer Publication -&gt; McpServer destination scope check + ObjectStore untrusted-cas isolation</code></li><li><code>Merge / Release Gate Satisfaction -&gt; ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification</code></li><li><code>One-Time Sandbox Auth Token Minting &amp; PKCE Exchange -&gt; OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS</code></li><li><code>Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -&gt; ExecutionTrust.authorizeAction (default-deny) + McpServer guard</code></li></ul>
       
       <div class="audit-meta">ID: <code>root-input-tracing</code> · Weight: 2 · 12ms</div>
     </div>
@@ -634,12 +634,12 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
       <span class="audit-title">Authenticated Cloud MCP Server</span>
-      <span class="audit-value">18 tools live</span>
+      <span class="audit-value">20 tools live</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
       <p>Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.</p>
-      <ul class="evidence-list"><li><code>Streamable HTTP MCP server with OAuth 2.1 + PKCE S256 discovery and one-time token exchange</code></li></ul>
+      <ul class="evidence-list"><li><code>Streamable HTTP MCP server exposes 20 tools with OAuth 2.1 + PKCE S256 discovery and one-time token exchange</code></li></ul>
       
       <div class="audit-meta">ID: <code>cloud-mcp-server</code> · Weight: 3 · 16ms</div>
     </div>
@@ -769,38 +769,38 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
         <td><strong>Shared Object Store Cache Write (/ac, /cas)</strong></td>
         <td>HMAC-signed ExecutionClaim + server-minted cache:write scope</td>
         <td><code>ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache</code></td>
-        <td>Constant-time HMAC verification + tier check (trusted:maintainer | trusted:sandbox only)</td>
+        <td>Constant-time HMAC verification + exhaustive tier check (trusted:maintainer | trusted:sandbox only)</td>
         <td class="num ok">Blocked</td>
       </tr>
 
       <tr>
         <td><strong>Trusted Artifact Pointer Publication</strong></td>
-        <td>Verified ExecutionClaim + SHA-256 content digest</td>
-        <td><code>ObjectStore.putArtifact namespace isolation</code></td>
-        <td>Untrusted writes routed exclusively to untrusted/&lt;actor&gt;/&lt;sha&gt;/, never trusted/</td>
+        <td>Verified ExecutionClaim + artifact:write:trusted scope + SHA-256 content digest</td>
+        <td><code>McpServer destination scope check + ObjectStore untrusted-cas isolation</code></td>
+        <td>Untrusted writes routed exclusively to untrusted-cas/ and untrusted/&lt;actor&gt;/&lt;sha&gt;/, never cas/ or trusted/</td>
         <td class="num ok">Blocked</td>
       </tr>
 
       <tr>
         <td><strong>Merge / Release Gate Satisfaction</strong></td>
-        <td>AuditEngine report + verified ExecutionClaim</td>
-        <td><code>ExecutionTrust.evaluateGate</code></td>
-        <td>Hard returns satisfied: false and status: untrusted_preview for untrusted:community</td>
+        <td>AuditEngine commit-bound GateReceipt + verified ExecutionClaim</td>
+        <td><code>ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification</code></td>
+        <td>Requires trusted GateReceipt matching exact repository and head commit SHA; untrusted runs stay untrusted_preview</td>
         <td class="num ok">Blocked</td>
       </tr>
 
       <tr>
-        <td><strong>One-Time Sandbox Auth Token Minting</strong></td>
-        <td>Maintainer identity + scope request</td>
-        <td><code>OneTimeTokenStore.mint</code></td>
-        <td>Scope intersection strips person-only actions and strips cache:write for untrusted tiers</td>
+        <td><strong>One-Time Sandbox Auth Token Minting &amp; PKCE Exchange</strong></td>
+        <td>Maintainer identity + allowlisted scopes + RFC 7636 S256 challenge</td>
+        <td><code>OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS</code></td>
+        <td>Single-use conditional UPDATE burn + atomic lease insert; scope intersection strips person-only and untrusted write scopes</td>
         <td class="num ok">Blocked</td>
       </tr>
 
       <tr>
         <td><strong>Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write)</strong></td>
         <td>Authenticated session callerKind + maintainer role</td>
-        <td><code>ExecutionTrust.authorizeAction + McpServer guard</code></td>
+        <td><code>ExecutionTrust.authorizeAction (default-deny) + McpServer guard</code></td>
         <td>403 person_only for all agent and sandbox tokens regardless of underlying user role</td>
         <td class="num ok">Blocked</td>
       </tr>

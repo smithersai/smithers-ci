@@ -209,7 +209,11 @@ export function LighthouseAuditView({ snapshot }: LighthouseAuditViewProps) {
               Baseline cold execution vs shared Smithers Cloud object store (<code>{snapshot.objectStoreEndpoint}</code>)
             </p>
           </div>
-          <span className="pill pill-pass">All 6 targets warm cached</span>
+          <span className={`pill ${provenanceMode === "trusted" ? "pill-pass" : "pill-warn"}`}>
+            {provenanceMode === "trusted"
+              ? "Trusted R/W warm cache hits"
+              : "Untrusted read-only warm hits (cache writes blocked)"}
+          </span>
         </div>
         <div className="table-wrap">
           <table>

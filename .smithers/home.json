@@ -124,7 +124,7 @@
           "type": "code",
           "file": "audit.sh",
           "language": "sh",
-          "code": "# Measure speedup on your own history without changing a file\nbunx smithers-ci --commits 4\n\n# Run the 6-category Lighthouse backpressure audit\nbun run audit\n\n# Mint a single-use sandbox credential for an agent\nbunx smithers-ci auth mint --subject sandbox:cfbox-01 --tier trusted:sandbox"
+          "code": "# Measure speedup without changing a file\nbunx smithers-ci --commits 4\n\n# Run the 6-category Lighthouse audit\nbun run audit\n\n# Mint a single-use sandbox credential\nbunx smithers-ci auth mint \\\n  --subject sandbox:cfbox-01 \\\n  --tier trusted:sandbox"
         },
         {
           "type": "stats",
@@ -197,7 +197,7 @@
             },
             {
               "name": "v1.0.0-rc.19",
-              "url": "https://github.com/smithersai/smithers/releases/tag/v1.0.0-rc.19",
+              "url": "https://github.com/smithersai/smithers-ci/releases",
               "date": "2026-11-26",
               "summary": "Native smthrs-observe record format /7, 387 Lean 4 theorems, 40 fuzz suites, and ci.smithers.sh launch."
             }

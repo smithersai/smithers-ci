@@ -57,14 +57,14 @@ const untrustedExec = verifyExecutionTrust(
 const trustedAudit = runBackpressureAudit({
   repoRoot,
   execution: trustedExec,
-  testResults: { passed: 22, failed: 0, durationMs: 586 },
+  testResults: { passed: 35, failed: 0, durationMs: 740 },
   typecheckPassed: true
 })
 
 const untrustedAudit = runBackpressureAudit({
   repoRoot,
   execution: untrustedExec,
-  testResults: { passed: 22, failed: 0, durationMs: 612 },
+  testResults: { passed: 35, failed: 0, durationMs: 790 },
   typecheckPassed: true
 })
 

@@ -163,7 +163,15 @@ export function App() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault()
-                  if (waitlistRepo.trim().length > 2) setWaitlistSubmitted(true)
+                  const trimmed = waitlistRepo.trim()
+                  if (trimmed.length > 2) {
+                    setWaitlistSubmitted(true)
+                    void fetch("/api/waitlist", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({ repo: trimmed })
+                    }).catch(() => undefined)
+                  }
                 }}
               >
                 <label style={{ fontSize: "0.8rem", color: "var(--muted)", display: "block", marginBottom: "0.3rem" }}>
