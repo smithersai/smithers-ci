@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.smithers/cache/
+.smithers/object-store/
+.smithers/reports/
+.smithers/reports-untrusted/
+.smithers/tokens/
+.flows/
+.wrangler/
+.alchemy/
+*.log
+.DS_Store

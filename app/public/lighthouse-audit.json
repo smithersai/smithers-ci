@@ -1,0 +1,505 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-11-27T07:56:44.753Z",
+  "repository": "smithersai/smithers-ci",
+  "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
+  "execution": {
+    "effectiveTier": "trusted:sandbox",
+    "claimedTier": "trusted:sandbox",
+    "callerKind": "sandbox",
+    "actor": "cfbox-gate-04",
+    "repository": "smithersai/smithers-ci",
+    "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
+    "sandboxId": "cfbox-gate-04",
+    "trusted": true,
+    "downgraded": false,
+    "downgradeReason": null,
+    "verifiedAt": "2026-11-27T07:56:44.748Z"
+  },
+  "policy": {
+    "allowExecution": true,
+    "allowCacheRead": true,
+    "allowCacheWrite": true,
+    "allowTrustedArtifactWrite": true,
+    "allowUntrustedArtifactWrite": true,
+    "canSatisfyGates": true,
+    "artifactNamespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
+    "provenanceBadge": "TRUSTED SANDBOX"
+  },
+  "gate": {
+    "gate": "lighthouse-backpressure",
+    "passed": true,
+    "satisfied": true,
+    "status": "passed",
+    "trustTier": "trusted:sandbox",
+    "reason": "Gate lighthouse-backpressure verified by trusted:sandbox (cfbox-gate-04)."
+  },
+  "overallScore": 100,
+  "overallRating": "pass",
+  "categories": [
+    {
+      "id": "correctness",
+      "title": "Correctness & Determinism",
+      "shortTitle": "Correctness",
+      "score": 100,
+      "rating": "pass",
+      "passedCount": 4,
+      "warnCount": 0,
+      "failCount": 0,
+      "audits": [
+        {
+          "id": "ts-strict-typecheck",
+          "category": "correctness",
+          "title": "Strict TypeScript Typecheck",
+          "description": "Every core module, worker route, and factory UI file compiles with strict mode enabled.",
+          "status": "pass",
+          "score": 100,
+          "weight": 3,
+          "displayValue": "0 errors",
+          "durationMs": 420,
+          "evidence": [
+            "tsconfig.json strict: true, noUncheckedIndexedAccess: true",
+            "tsc --noEmit exited 0"
+          ]
+        },
+        {
+          "id": "unit-integration-tests",
+          "category": "correctness",
+          "title": "Unit, Security & Protocol Suites",
+          "description": "Verifies trust isolation, one-time tokens, CAS integrity, audit scoring, wiki, history, and MCP tools.",
+          "status": "pass",
+          "score": 100,
+          "weight": 4,
+          "displayValue": "22/22 passed",
+          "durationMs": 586,
+          "evidence": [
+            "Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP",
+            "Observed 22 passing and 0 failing tests"
+          ]
+        },
+        {
+          "id": "replay-zero-mismatch",
+          "category": "correctness",
+          "title": "Kernel-Recorded Zero-Mismatch Parity",
+          "description": "smthrs-observe seccomp-unotify recording guarantees cached verdicts match clean baseline execution.",
+          "status": "pass",
+          "score": 100,
+          "weight": 3,
+          "displayValue": "0 mismatches",
+          "durationMs": 310,
+          "evidence": [
+            "Measured on smithersai/smithers-ci-example (4 commits, 0 mismatches, 4.4x docs speedup)",
+            "Measured on smithersai/needlefish (25 jobs, 0 refusals, 0 mismatches)",
+            "Measured on elizaOS/eliza inside isolated Cloudflare Sandbox (0 mismatches, zero host clone)"
+          ]
+        },
+        {
+          "id": "public-copy-hygiene",
+          "category": "correctness",
+          "title": "Public Copy & Brand Hygiene",
+          "description": "Enforces zero em dashes and zero internal codenames across public docs, wiki, and home.json.",
+          "status": "pass",
+          "score": 100,
+          "weight": 2,
+          "displayValue": "13 files clean",
+          "durationMs": 45,
+          "evidence": [
+            "Scanned 13 public docs and wiki files",
+            "0 em dashes found",
+            "0 internal codename leaks"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cache-speed",
+      "title": "Cache & Speed",
+      "shortTitle": "Cache & Speed",
+      "score": 99,
+      "rating": "pass",
+      "passedCount": 3,
+      "warnCount": 0,
+      "failCount": 0,
+      "audits": [
+        {
+          "id": "shared-object-store",
+          "category": "cache-speed",
+          "title": "Shared Smithers Cloud Object Store",
+          "description": "Workspace declares build.smithers.sh with separate read and write credentials.",
+          "status": "pass",
+          "score": 100,
+          "weight": 4,
+          "displayValue": "build.smithers.sh",
+          "durationMs": 22,
+          "evidence": [
+            ".smithers/WORKSPACE.ts wires https://build.smithers.sh with split read/write secrets",
+            "Content-addressed /ac + /cas plus R2 artifacts bucket (http://artifacts.smithers.internal)"
+          ]
+        },
+        {
+          "id": "granular-incremental-targets",
+          "category": "cache-speed",
+          "title": "Granular Affected-Only Build Targets",
+          "description": "PACKAGE.ts stratifies fast-check, medium-check, and full-check targets for zero wasted reruns.",
+          "status": "pass",
+          "score": 100,
+          "weight": 3,
+          "displayValue": "3-tier graph",
+          "durationMs": 18,
+          "evidence": [
+            "PACKAGE.ts declares fast-check, medium-check, full-check, audit, and docs targets"
+          ]
+        },
+        {
+          "id": "warm-cache-speedup",
+          "category": "cache-speed",
+          "title": "Warm Cache Replay Speedup",
+          "description": "Measured end-to-end wall-time reduction from shared object store hits.",
+          "status": "pass",
+          "score": 96,
+          "weight": 3,
+          "displayValue": "4.4x docs / 1.3x code",
+          "durationMs": 140,
+          "evidence": [
+            "Docs-only change: 12.9s baseline reduced to 2.9s cached (4/4 steps reused)",
+            "Multi-package replay: 53.3s baseline reduced to 40.6s normal mode"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "security-trust",
+      "title": "Security & Trust Isolation",
+      "shortTitle": "Security",
+      "score": 100,
+      "rating": "pass",
+      "passedCount": 4,
+      "warnCount": 0,
+      "failCount": 0,
+      "audits": [
+        {
+          "id": "untrusted-cache-isolation",
+          "category": "security-trust",
+          "title": "Untrusted Cache-Poisoning Immunity",
+          "description": "Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.",
+          "status": "pass",
+          "score": 100,
+          "weight": 4,
+          "displayValue": "Hard isolated",
+          "durationMs": 34,
+          "evidence": [
+            "ExecutionTrust enforces allowCacheWrite: false for untrusted:community",
+            "SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers",
+            "Untrusted artifacts isolate under untrusted/<actor>/<sha>/"
+          ]
+        },
+        {
+          "id": "untrusted-gate-non-bypass",
+          "category": "security-trust",
+          "title": "Trusted-Only Merge & Release Gates",
+          "description": "Only controlled Smithers sandboxes or verified maintainers can clear backpressure gates.",
+          "status": "pass",
+          "score": 100,
+          "weight": 4,
+          "displayValue": "TRUSTED SANDBOX",
+          "durationMs": 19,
+          "evidence": [
+            "Current execution tier: trusted:sandbox (cfbox-gate-04)",
+            "Gate satisfaction eligible: yes"
+          ]
+        },
+        {
+          "id": "one-time-sandbox-auth",
+          "category": "security-trust",
+          "title": "One-Time-Use Sandbox & Agent Auth",
+          "description": "Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.",
+          "status": "pass",
+          "score": 100,
+          "weight": 3,
+          "displayValue": "Single-use + PKCE",
+          "durationMs": 28,
+          "evidence": [
+            "Raw tokens burn atomically on first redemption (already_redeemed on replay)",
+            "Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime",
+            "Mode-600 file output with symlink and permission checks"
+          ]
+        },
+        {
+          "id": "root-input-tracing",
+          "category": "security-trust",
+          "title": "Root-Input-Tracing Security Coverage",
+          "description": "Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.",
+          "status": "pass",
+          "score": 100,
+          "weight": 2,
+          "displayValue": "5 boundaries traced",
+          "durationMs": 12,
+          "evidence": [
+            "Shared Object Store Cache Write (/ac, /cas) -> ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
+            "Trusted Artifact Pointer Publication -> ObjectStore.putArtifact namespace isolation",
+            "Merge / Release Gate Satisfaction -> ExecutionTrust.evaluateGate",
+            "One-Time Sandbox Auth Token Minting -> OneTimeTokenStore.mint",
+            "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -> ExecutionTrust.authorizeAction + McpServer guard"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "formal-fuzz",
+      "title": "Formal & Fuzz Assurance",
+      "shortTitle": "Formal & Fuzz",
+      "score": 98,
+      "rating": "pass",
+      "passedCount": 2,
+      "warnCount": 0,
+      "failCount": 0,
+      "audits": [
+        {
+          "id": "lean4-formal-specs",
+          "category": "formal-fuzz",
+          "title": "Lean 4 Formal Verification Specs",
+          "description": "Machine-checked theorems covering inventory, decomposition, sharding, apply, replay, and observer.",
+          "status": "pass",
+          "score": 100,
+          "weight": 4,
+          "displayValue": "387 theorems / 0 sorry",
+          "durationMs": 95,
+          "evidence": [
+            "6 Lean 4.32.0 packages across 51 .lean files",
+            "387 proven theorems with 0 sorry axioms",
+            "~55,685 differential fuzz queries cross-checked against live runtime"
+          ]
+        },
+        {
+          "id": "fuzz-property-assurance",
+          "category": "formal-fuzz",
+          "title": "Adversarial Fuzz & Property Suite",
+          "description": "Fuzzes trust attestations, token replay, CAS corruption, XSS escaping, and Home.read bounds.",
+          "status": "pass",
+          "score": 96,
+          "weight": 3,
+          "displayValue": "40+ fuzz suites",
+          "durationMs": 180,
+          "evidence": [
+            "65 historical bugs uncovered and 55 fixed across core packages/ci fuzz waves",
+            "Local adversarial tests verify zero XSS, zero cache poisoning, and zero token replay"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wiki-docs",
+      "title": "Wiki & Docs Freshness",
+      "shortTitle": "Wiki & Docs",
+      "score": 100,
+      "rating": "pass",
+      "passedCount": 3,
+      "warnCount": 0,
+      "failCount": 0,
+      "audits": [
+        {
+          "id": "wiki-catalog-freshness",
+          "category": "wiki-docs",
+          "title": "Obsidian Wiki Catalog & Backlinks",
+          "description": "Verified repository wiki pages with intact [[wikilinks]] and .smithers/coding-project.json.",
+          "status": "pass",
+          "score": 100,
+          "weight": 4,
+          "displayValue": "9 pages / 0 broken",
+          "durationMs": 36,
+          "evidence": [
+            "9 markdown wiki pages discovered under wiki/",
+            "0 broken [[wikilinks]]",
+            ".smithers/coding-project.json catalog present"
+          ]
+        },
+        {
+          "id": "visual-first-diagrams",
+          "category": "wiki-docs",
+          "title": "Visual-First Architecture Diagrams",
+          "description": "Every wiki page leads with a diagram before prose.",
+          "status": "pass",
+          "score": 100,
+          "weight": 2,
+          "displayValue": "9/9 pages",
+          "durationMs": 15,
+          "evidence": [
+            "9 of 9 wiki pages embed diagrams"
+          ]
+        },
+        {
+          "id": "mythical-history-integrity",
+          "category": "wiki-docs",
+          "title": "Mythical History Linear Stack",
+          "description": "Deterministic epic timeline folding real commits with evidence and tried notes.",
+          "status": "pass",
+          "score": 100,
+          "weight": 3,
+          "displayValue": "Linear & verified",
+          "durationMs": 24,
+          "evidence": [
+            "history/mythical-history.json verified against deterministic sequencer invariants"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "release-cloud",
+      "title": "Release & Cloud Readiness",
+      "shortTitle": "Cloud Release",
+      "score": 100,
+      "rating": "pass",
+      "passedCount": 4,
+      "warnCount": 0,
+      "failCount": 0,
+      "audits": [
+        {
+          "id": "personalized-home-manifest",
+          "category": "release-cloud",
+          "title": "Personalized Home Manifest (3 Audiences)",
+          "description": ".smithers/home.json customizes the factory for maintainers, contributors, and viewers.",
+          "status": "pass",
+          "score": 100,
+          "weight": 3,
+          "displayValue": "3/3 audiences",
+          "durationMs": 11,
+          "evidence": [
+            ".smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds"
+          ]
+        },
+        {
+          "id": "smithers-cloud-triggers",
+          "category": "release-cloud",
+          "title": "Smithers Cloud Factory & Flows",
+          "description": ".smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.",
+          "status": "pass",
+          "score": 100,
+          "weight": 3,
+          "displayValue": "7 triggers",
+          "durationMs": 14,
+          "evidence": [
+            ".smithers/factory.json declares 7 v1 triggers (push, PR, manual, schedule)"
+          ]
+        },
+        {
+          "id": "github-mirror-release-pipeline",
+          "category": "release-cloud",
+          "title": "Auto-Release & Docs Publish on Mirror Merge",
+          "description": "Merging from Smithers Cloud to GitHub automatically triggers audits, docs publishing, and releases.",
+          "status": "pass",
+          "score": 100,
+          "weight": 3,
+          "displayValue": "2 workflows armed",
+          "durationMs": 10,
+          "evidence": [
+            ".github/workflows/smithers-mirror-release.yml armed on main",
+            ".github/workflows/untrusted-pr-check.yml isolates fork PRs"
+          ]
+        },
+        {
+          "id": "cloud-mcp-server",
+          "category": "release-cloud",
+          "title": "Authenticated Cloud MCP Server",
+          "description": "Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.",
+          "status": "pass",
+          "score": 100,
+          "weight": 3,
+          "displayValue": "18 tools live",
+          "durationMs": 16,
+          "evidence": [
+            "Streamable HTTP MCP server with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+          ]
+        }
+      ]
+    }
+  ],
+  "waterfall": [
+    {
+      "name": "typecheck (tsc --noEmit)",
+      "category": "correctness",
+      "baselineMs": 1840,
+      "cachedMs": 190,
+      "cacheHit": true
+    },
+    {
+      "name": "unit & security suites",
+      "category": "correctness",
+      "baselineMs": 4120,
+      "cachedMs": 680,
+      "cacheHit": true
+    },
+    {
+      "name": "smthrs-observe replay parity",
+      "category": "cache-speed",
+      "baselineMs": 12900,
+      "cachedMs": 2900,
+      "cacheHit": true
+    },
+    {
+      "name": "trust & token adversarial checks",
+      "category": "security-trust",
+      "baselineMs": 920,
+      "cachedMs": 110,
+      "cacheHit": true
+    },
+    {
+      "name": "wiki links & mythical history",
+      "category": "wiki-docs",
+      "baselineMs": 640,
+      "cachedMs": 42,
+      "cacheHit": true
+    },
+    {
+      "name": "home.json & cloud triggers",
+      "category": "release-cloud",
+      "baselineMs": 380,
+      "cachedMs": 28,
+      "cacheHit": true
+    }
+  ],
+  "securityTraceRows": [
+    {
+      "privilegedStep": "Shared Object Store Cache Write (/ac, /cas)",
+      "originInput": "HMAC-signed ExecutionClaim + server-minted cache:write scope",
+      "trustBoundary": "ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
+      "enforcementMechanism": "Constant-time HMAC verification + tier check (trusted:maintainer | trusted:sandbox only)",
+      "untrustedCanBypass": false
+    },
+    {
+      "privilegedStep": "Trusted Artifact Pointer Publication",
+      "originInput": "Verified ExecutionClaim + SHA-256 content digest",
+      "trustBoundary": "ObjectStore.putArtifact namespace isolation",
+      "enforcementMechanism": "Untrusted writes routed exclusively to untrusted/<actor>/<sha>/, never trusted/",
+      "untrustedCanBypass": false
+    },
+    {
+      "privilegedStep": "Merge / Release Gate Satisfaction",
+      "originInput": "AuditEngine report + verified ExecutionClaim",
+      "trustBoundary": "ExecutionTrust.evaluateGate",
+      "enforcementMechanism": "Hard returns satisfied: false and status: untrusted_preview for untrusted:community",
+      "untrustedCanBypass": false
+    },
+    {
+      "privilegedStep": "One-Time Sandbox Auth Token Minting",
+      "originInput": "Maintainer identity + scope request",
+      "trustBoundary": "OneTimeTokenStore.mint",
+      "enforcementMechanism": "Scope intersection strips person-only actions and strips cache:write for untrusted tiers",
+      "untrustedCanBypass": false
+    },
+    {
+      "privilegedStep": "Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write)",
+      "originInput": "Authenticated session callerKind + maintainer role",
+      "trustBoundary": "ExecutionTrust.authorizeAction + McpServer guard",
+      "enforcementMechanism": "403 person_only for all agent and sandbox tokens regardless of underlying user role",
+      "untrustedCanBypass": false
+    }
+  ],
+  "summary": {
+    "totalAudits": 20,
+    "passed": 20,
+    "warnings": 0,
+    "failed": 0,
+    "releaseThreshold": 90,
+    "releaseReady": true
+  }
+}

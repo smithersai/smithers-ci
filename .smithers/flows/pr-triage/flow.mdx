@@ -1,0 +1,13 @@
+---
+id: pr-triage
+title: Pull Request Triage (Zero Untrusted Execution)
+summary: Assess a pull request from its diff and untrusted Lighthouse preview without executing untrusted PR code on maintainer hosts.
+---
+
+# Pull Request Triage
+
+1. Read the pull request diff and stacked changeset metadata through Cloud MCP (`pulls_list`, `changesets_stack_list`).
+2. Inspect the attached `untrusted:community` Lighthouse backpressure preview artifact via `artifacts_list`.
+3. Never run untrusted pull request code on a maintainer laptop or with `SMITHERS_CACHE_WRITE_TOKEN` present.
+4. Summarize scope, risk, test coverage, and whether a maintainer should trigger a controlled `trusted:sandbox` verification run.
+5. Never approve or merge. People merge.

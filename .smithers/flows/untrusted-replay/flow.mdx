@@ -1,0 +1,12 @@
+---
+id: untrusted-replay
+title: Isolated Community Sandbox Replay
+summary: Run untrusted community replay benchmarks inside an isolated Cloudflare Sandbox with read-only cache access.
+---
+
+# Isolated Community Sandbox Replay
+
+1. Verify that no host secrets, write tokens, or maintainer credentials enter the sandbox.
+2. Allow read-only access to the shared Smithers Cloud object store (`https://build.smithers.sh`) for fast warm cache hits.
+3. Run `bun run audit:untrusted` and store the resulting Lighthouse report strictly under `untrusted/<actor>/<sha>/`.
+4. Return the preview score and diagnostics clearly labeled `UNTRUSTED COMMUNITY`.

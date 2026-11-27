@@ -1,0 +1,15 @@
+# Smithers CI
+
+> Fast kernel-recorded incremental CI, Lighthouse backpressure audits, Cloud MCP, Wiki, and Mythical History built publicly on Smithers Cloud.
+
+## Wiki & Architecture
+
+- [Formal Verification and Fuzz Assurance](https://ci.smithers.sh/wiki/formal-verification): Lean 4 formal specifications, differential fuzzing, and adversarial security test suites backing Smithers CI.
+- [Incremental Replay Pipeline](https://ci.smithers.sh/wiki/incremental-replay): Four-stage pipeline that inventories existing GitHub Actions, splits workspace steps, generates Smithers targets, and verifies zero-mismatch replay.
+- [Smithers CI Architecture Overview](https://ci.smithers.sh/wiki/index): How Smithers CI turns existing CI into kernel-recorded incremental targets with shared cloud caching, Lighthouse backpressure audits, and public Cloud MCP.
+- [Kernel Observer (smthrs-observe)](https://ci.smithers.sh/wiki/kernel-observer): How smthrs-observe records exact file reads at the Linux seccomp-unotify boundary inside bubblewrap for zero stale passes.
+- [Lighthouse Backpressure Audit Report](https://ci.smithers.sh/wiki/lighthouse-backpressure): How Smithers CI grades every commit across six backpressure categories from 0 to 100 in a self-contained Lighthouse-inspired report.
+- [Cloud MCP Server and One-Time Sandbox Auth](https://ci.smithers.sh/wiki/mcp-and-one-time-auth): Bring-Your-Own-Agent Streamable HTTP MCP server with OAuth 2.1 PKCE discovery and single-use smo_ sandbox bootstrap tokens.
+- [GitHub Mirror, Automated Releases, and Docs Publishing](https://ci.smithers.sh/wiki/release-and-mirror): How merging on Smithers Cloud mirrors to GitHub main and automatically triggers trusted Lighthouse audits, docs publishing, and npm releases.
+- [Shared Smithers Cloud Object Store](https://ci.smithers.sh/wiki/shared-object-store): Content-addressed /ac and /cas build cache plus R2 CI artifact storage with strict trust-based read and write separation.
+- [Execution Trust and Isolation Model](https://ci.smithers.sh/wiki/trust-and-isolation): Three-tier execution trust model that encourages open community runs while making cache poisoning and gate skipping structurally impossible.

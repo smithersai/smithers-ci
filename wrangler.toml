@@ -1,0 +1,11 @@
+name = "smithers-ci-factory"
+main = "worker/index.ts"
+compatibility_date = "2026-11-01"
+
+[assets]
+directory = "./dist/ui"
+binding = "ASSETS"
+not_found_handling = "none"
+
+[vars]
+SMITHERS_BASE_URL = "https://smithers.sh"

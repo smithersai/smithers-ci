@@ -1,0 +1,60 @@
+{
+  "repository": "smithersai/smithers-ci",
+  "seq": 14,
+  "refs": {
+    "mythicalBookmark": "refs/heads/mythical",
+    "notesRef": "refs/notes/mythical",
+    "manifestRef": "refs/heads/smithers/history"
+  },
+  "manifestDigest": "0b61a5114fbcb8743324fb091e8e44f5a4ff2aa1c8e4531803faa7d9f1484c45",
+  "entries": [
+    {
+      "id": "m1",
+      "epicId": "epic-1",
+      "state": "landed",
+      "parentId": null,
+      "foldedCount": 1,
+      "deterministicHash": "023e6e191ca3d4c691a9a73f1827c629c0ec856f"
+    },
+    {
+      "id": "m2",
+      "epicId": "epic-2",
+      "state": "landed",
+      "parentId": "m1",
+      "foldedCount": 1,
+      "deterministicHash": "1acc4269b97d03bb983bb1f3044159f24ff2eea2"
+    },
+    {
+      "id": "m3",
+      "epicId": "epic-2",
+      "state": "landed",
+      "parentId": "m2",
+      "foldedCount": 1,
+      "deterministicHash": "00e893e849ab394f19dbcd0c5f0fbb283bda1b01"
+    },
+    {
+      "id": "m4",
+      "epicId": "epic-2",
+      "state": "landed",
+      "parentId": "m3",
+      "foldedCount": 1,
+      "deterministicHash": "95e55c6f6b008daa65107e3d9abf5de6ed4a4ca6"
+    },
+    {
+      "id": "m5",
+      "epicId": "epic-3",
+      "state": "landed",
+      "parentId": "m4",
+      "foldedCount": 1,
+      "deterministicHash": "77ad6d3727b75868ad2ad9f1ad6b3586707d5f05"
+    },
+    {
+      "id": "m6",
+      "epicId": "epic-4",
+      "state": "approved",
+      "parentId": "m5",
+      "foldedCount": 0,
+      "deterministicHash": "56fcc585d4bac30aa0e9eb177b0ad88701ea54af"
+    }
+  ]
+}

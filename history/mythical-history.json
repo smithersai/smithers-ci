@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "1.0.0",
+  "repository": "smithersai/smithers-ci",
+  "seq": 14,
+  "epics": [
+    {
+      "id": "epic-1",
+      "order": 1,
+      "title": "Kernel-Recorded Observer & Zero Stale Passes",
+      "summary": "Build smthrs-observe with Linux seccomp-unotify and bubblewrap confinement so exact file reads drive every cache key."
+    },
+    {
+      "id": "epic-2",
+      "order": 2,
+      "title": "VibeLang Migration, Tri-Model Hardening & Lean 4 Proofs",
+      "summary": "Migrate 99 modules to VibeLang, converge 441 tri-model review findings down 81 percent, fuzz 40 suites, and prove 387 Lean 4 theorems with 0 sorry."
+    },
+    {
+      "id": "epic-3",
+      "order": 3,
+      "title": "Cloudflare Sandbox Isolation & Public Showcase",
+      "summary": "Launch ci.smithers.sh, smithersai/smithers-ci-example, and isolated Cloudflare Sandbox replays for untrusted repositories."
+    },
+    {
+      "id": "epic-4",
+      "order": 4,
+      "title": "Public Smithers Cloud Factory Switchover",
+      "summary": "Host smithers-ci publicly on smithers.sh/smithersai/smithers-ci with shared object store, Lighthouse backpressure audits, Cloud MCP, one-time sandbox auth, Wiki, and personalized audience UI."
+    }
+  ],
+  "commits": [
+    {
+      "id": "m1",
+      "epicId": "epic-1",
+      "rank": 1,
+      "title": "Ship smthrs-observe record format /7 with zero stale-pass holes",
+      "state": "landed",
+      "lane": "sci-recorder-holes",
+      "notes": [
+        {
+          "section": "tried",
+          "text": "Early strace-only recording missed syscalls past strace tables under keeper processes and struggled with io_uring race windows.",
+          "at": "2026-11-20T18:10:00.000Z"
+        },
+        {
+          "section": "evidence",
+          "text": "Rebuilt native observe.c (-Wall -Werror) for x86_64 and aarch64. Cleared all 7 ship blockers (u1, u2, u3, u4, u6, u7, u10) including ENOSYS io_uring_setup refusal and directory link counts. 100.00 percent coverage across all 4 observer modules.",
+          "at": "2026-11-24T04:15:00.000Z"
+        }
+      ],
+      "foldedRealCommits": [
+        {
+          "sha": "0617b070eb120000000000000000000000000000",
+          "message": "fix(build-cli): record format /7, x64 & arm64 observer binaries, 100 percent observer coverage",
+          "landedAt": "2026-11-24T04:15:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "m2",
+      "epicId": "epic-2",
+      "rank": 1,
+      "title": "Migrate 99 smithers-ci source modules to VibeLang",
+      "state": "landed",
+      "lane": "sci-vibelang-migrate",
+      "notes": [
+        {
+          "section": "evidence",
+          "text": "All 99 modules in packages/ci/src migrated to .vibe with 100 percent test and branch coverage across testRest, testCli, testReplay, and testNative plus 252/252 Drift green.",
+          "at": "2026-11-23T19:00:00.000Z"
+        }
+      ],
+      "foldedRealCommits": [
+        {
+          "sha": "a3c2c33379740000000000000000000000000000",
+          "message": "feat(ci): complete 99-module VibeLang migration with 100 percent coverage",
+          "landedAt": "2026-11-23T19:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "m3",
+      "epicId": "epic-2",
+      "rank": 2,
+      "title": "Complete 3-round tri-model code review and 40-suite fuzz remediation",
+      "state": "landed",
+      "lane": "sci-tri-model-review",
+      "notes": [
+        {
+          "section": "tried",
+          "text": "Round 1 surfaced 441 findings across 142 files (9 P0, 122 P1). Fuzz lanes uncovered tar duplicate-member symlink escapes, HTML XSS vectors, ReDoS in Workspace parsing, and credential leaks across quote boundaries.",
+          "at": "2026-11-23T22:00:00.000Z"
+        },
+        {
+          "section": "evidence",
+          "text": "18 deep passes across Codex Astra, Claude Fable/Opus, and Gemini Neon converged findings 441 -> 179 -> 82 (-81 percent, 0 P0s). 65 fuzz bugs found, 55 fixed.",
+          "at": "2026-11-24T12:00:00.000Z"
+        }
+      ],
+      "foldedRealCommits": [
+        {
+          "sha": "1ac184541b6d0000000000000000000000000000",
+          "message": "fix(ci): surgical remediation of Round 3 review and fuzz findings",
+          "landedAt": "2026-11-24T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "m4",
+      "epicId": "epic-2",
+      "rank": 3,
+      "title": "Verify 6 Lean 4 formal specs (387 theorems, 0 sorry) and 55,685 differential queries",
+      "state": "landed",
+      "lane": "sci-lean-specs",
+      "notes": [
+        {
+          "section": "evidence",
+          "text": "6 standalone Lean 4.32.0 packages across 51 .lean files verified inventory, decompose, select_shard, generate_apply, report_replay, and observed_reads with 0 sorry axioms and 6 live runtime edge bugs fixed.",
+          "at": "2026-11-25T10:00:00.000Z"
+        }
+      ],
+      "foldedRealCommits": [
+        {
+          "sha": "9797d7cfd6f40000000000000000000000000000",
+          "message": "feat(ci): land 6 Lean 4 formal packages with 387 theorems and differential fuzzing",
+          "landedAt": "2026-11-25T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "m5",
+      "epicId": "epic-3",
+      "rank": 1,
+      "title": "Ship ci.smithers.sh, smithers-ci-example, and isolated Cloudflare Sandbox replays",
+      "state": "landed",
+      "lane": "sci-box-replay",
+      "notes": [
+        {
+          "section": "evidence",
+          "text": "Deployed https://ci.smithers.sh on Cloudflare Workers. Published smithersai/smithers-ci-example (4.4x docs speedup, 1.3x code speedup, 0 mismatches). Verified elizaOS/eliza strictly inside isolated cfbox microVM with zero host clones or secrets.",
+          "at": "2026-11-26T18:46:00.000Z"
+        }
+      ],
+      "foldedRealCommits": [
+        {
+          "sha": "46412bca49c30000000000000000000000000000",
+          "message": "release: v1.0.0-rc.19 with ci.smithers.sh launch and isolated sandbox replay",
+          "landedAt": "2026-11-26T18:46:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "m6",
+      "epicId": "epic-4",
+      "rank": 1,
+      "title": "Launch public Smithers Cloud factory with Lighthouse audit, Cloud MCP, and 3-audience UI",
+      "state": "approved",
+      "lane": "sci-cloud-switchover",
+      "notes": [
+        {
+          "section": "evidence",
+          "text": "Built ExecutionTrust 3-tier isolation, OneTimeToken smo_ minter with PKCE S256, SharedObjectStore CAS, 6-category Lighthouse Backpressure Audit Engine, 20-tool Cloud MCP server, 9-page visual Obsidian Wiki, personalized Maintainer/Contributor/Viewer UI, and GitHub mirror release automation.",
+          "at": "2026-11-26T23:48:00.000Z"
+        }
+      ],
+      "foldedRealCommits": []
+    }
+  ]
+}

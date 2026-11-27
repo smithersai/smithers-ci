@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<title>Smithers CI Backpressure Audit · smithersai/smithers-ci @ 46412bca49c3</title>
+<style>
+:root {
+  --bg: #f8faf9;
+  --surface: #ffffff;
+  --surface-2: #f1f5f3;
+  --text: #0f1715;
+  --muted: #4b5c56;
+  --line: #dce4e0;
+  --lh-pass: #0c9f59;
+  --lh-avg: #d97706;
+  --lh-fail: #dc2626;
+  --accent: #0b6e5b;
+  --base-bar: #94a3b8;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b100e;
+    --surface: #121917;
+    --surface-2: #18221f;
+    --text: #eef5f2;
+    --muted: #93a79f;
+    --line: #23312c;
+    --lh-pass: #0cce6b;
+    --lh-avg: #ffa400;
+    --lh-fail: #ff4e42;
+    --accent: #4fd1b1;
+    --base-bar: #475569;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 var(--sans); }
+main { max-width: 1080px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.topbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 1.25rem; }
+.topbar h1 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
+.meta { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); }
+.banner { padding: 0.9rem 1.1rem; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 1.5rem; font-weight: 500; }
+.banner-trusted { background: color-mix(in srgb, var(--lh-pass) 12%, var(--surface)); border-color: color-mix(in srgb, var(--lh-pass) 40%, var(--line)); }
+.banner-untrusted { background: color-mix(in srgb, var(--lh-avg) 14%, var(--surface)); border-color: color-mix(in srgb, var(--lh-avg) 45%, var(--line)); }
+.banner-sub { display: block; margin-top: 0.25rem; font-size: 0.86rem; font-weight: 400; color: var(--muted); }
+.hero-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.75rem 1.25rem; margin-bottom: 1.75rem; }
+.hero-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; border-bottom: 1px solid var(--line); padding-bottom: 1.4rem; margin-bottom: 1.4rem; }
+.overall-wrap { display: flex; align-items: center; gap: 1.25rem; }
+.legend { display: flex; gap: 1.1rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 999px; margin-right: 6px; vertical-align: middle; }
+.leg-pass::before { background: var(--lh-pass); }
+.leg-avg::before { background: var(--lh-avg); }
+.leg-fail::before { background: var(--lh-fail); }
+.gauge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1rem; text-align: center; }
+.lh-gauge { display: flex; flex-direction: column; align-items: center; gap: 0.45rem; }
+.lh-gauge-base { fill: color-mix(in srgb, var(--gauge-color) 11%, transparent); stroke: color-mix(in srgb, var(--gauge-color) 25%, var(--line)); stroke-width: 7; }
+.lh-gauge-arc { fill: none; stroke: var(--gauge-color); stroke-width: 7; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
+.lh-gauge-num { fill: var(--gauge-color); font: 700 26px var(--mono); }
+.lh-gauge-label { font-size: 0.86rem; font-weight: 600; color: var(--text); }
+.category-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
+.category-head { margin-bottom: 0.85rem; }
+.category-title-wrap { display: flex; align-items: center; gap: 1rem; }
+.category-title-wrap h2 { margin: 0; font-size: 1.12rem; }
+.muted { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.86rem; }
+.audit-row { border-top: 1px solid var(--line); padding: 0.65rem 0; }
+.audit-row summary { cursor: pointer; display: grid; grid-template-columns: 14px 1fr auto 40px; gap: 0.7rem; align-items: center; list-style: none; font-weight: 500; }
+.audit-row summary::-webkit-details-marker { display: none; }
+.dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+.dot-pass { background: var(--lh-pass); }
+.dot-warn { background: var(--lh-avg); }
+.dot-fail { background: var(--lh-fail); }
+.audit-value { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); }
+.audit-score { font-family: var(--mono); font-size: 0.85rem; font-weight: 700; text-align: right; }
+.audit-body { padding: 0.6rem 0 0.25rem 1.65rem; font-size: 0.9rem; color: var(--muted); }
+.audit-body p { margin: 0 0 0.5rem; }
+.evidence-list { margin: 0; padding-left: 1.1rem; }
+.evidence-list li { margin: 0.2rem 0; }
+.audit-meta { margin-top: 0.5rem; font-size: 0.78rem; color: var(--muted); }
+.remediation { color: var(--lh-avg); font-weight: 500; }
+code { font-family: var(--mono); font-size: 0.84em; background: var(--surface-2); padding: 0.1rem 0.35rem; border-radius: 4px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th, td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--line); text-align: left; }
+th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+.ok { color: var(--lh-pass); font-weight: 600; }
+.wf-track { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
+.wf-bar { height: 7px; border-radius: 999px; }
+.wf-base { background: var(--base-bar); }
+.wf-cache { background: var(--lh-pass); }
+</style>
+</head>
+<body>
+<main>
+  <div class="topbar">
+    <h1>Smithers CI Backpressure Audit Report</h1>
+    <div class="meta">smithersai/smithers-ci @ 46412bca49c3 · 2026-11-27T07:56:44.753Z</div>
+  </div>
+
+  <div class="banner banner-trusted">
+    TRUSTED SANDBOX: Verified execution eligible for shared cache writes and release gates
+    <span class="banner-sub">Actor: cfbox-gate-04 · Gate status: passed · Gate lighthouse-backpressure verified by trusted:sandbox (cfbox-gate-04).</span>
+  </div>
+
+  <section class="hero-panel">
+    <div class="hero-top">
+      <div class="overall-wrap">
+        
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="112" height="112" role="img" aria-label="Overall score 100 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="0.00" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+    </svg>
+    <div class="lh-gauge-label">Overall</div>
+  </div>
+        <div>
+          <h2 style="margin:0 0 0.25rem;font-size:1.25rem;">Backpressure Health Score</h2>
+          <p class="muted">20/20 audits passed · 0 warnings · 0 failed</p>
+          <p class="muted">Release threshold: 90/100 · Release gate: <strong>SATISFIED</strong></p>
+        </div>
+      </div>
+      <div class="legend">
+        <span class="leg-pass">90-100 Pass</span>
+        <span class="leg-avg">50-89 Needs Work</span>
+        <span class="leg-fail">0-49 Fail</span>
+      </div>
+    </div>
+    <div class="gauge-grid">
+      
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Correctness score 100 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="0.00" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+    </svg>
+    <div class="lh-gauge-label">Correctness</div>
+  </div>
+
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Cache &amp; Speed score 99 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="2.51" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">99</text>
+    </svg>
+    <div class="lh-gauge-label">Cache &amp; Speed</div>
+  </div>
+
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Security score 100 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="0.00" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+    </svg>
+    <div class="lh-gauge-label">Security</div>
+  </div>
+
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Formal &amp; Fuzz score 98 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="5.03" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">98</text>
+    </svg>
+    <div class="lh-gauge-label">Formal &amp; Fuzz</div>
+  </div>
+
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Wiki &amp; Docs score 100 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="0.00" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+    </svg>
+    <div class="lh-gauge-label">Wiki &amp; Docs</div>
+  </div>
+
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Cloud Release score 100 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="0.00" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+    </svg>
+    <div class="lh-gauge-label">Cloud Release</div>
+  </div>
+    </div>
+  </section>
+
+  
+  <section class="category-card" id="cat-correctness">
+    <header class="category-head">
+      <div class="category-title-wrap">
+        
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Correctness score 100 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="0.00" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+    </svg>
+    <div class="lh-gauge-label">Correctness</div>
+  </div>
+        <div>
+          <h2>Correctness &amp; Determinism</h2>
+          <p class="muted">4 passed · 0 warnings · 0 failed</p>
+        </div>
+      </div>
+    </header>
+    <div class="audit-list">
+      
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Strict TypeScript Typecheck</span>
+      <span class="audit-value">0 errors</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Every core module, worker route, and factory UI file compiles with strict mode enabled.</p>
+      <ul class="evidence-list"><li><code>tsconfig.json strict: true, noUncheckedIndexedAccess: true</code></li><li><code>tsc --noEmit exited 0</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>ts-strict-typecheck</code> · Weight: 3 · 420ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Unit, Security &amp; Protocol Suites</span>
+      <span class="audit-value">22/22 passed</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Verifies trust isolation, one-time tokens, CAS integrity, audit scoring, wiki, history, and MCP tools.</p>
+      <ul class="evidence-list"><li><code>Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP</code></li><li><code>Observed 22 passing and 0 failing tests</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>unit-integration-tests</code> · Weight: 4 · 586ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Kernel-Recorded Zero-Mismatch Parity</span>
+      <span class="audit-value">0 mismatches</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>smthrs-observe seccomp-unotify recording guarantees cached verdicts match clean baseline execution.</p>
+      <ul class="evidence-list"><li><code>Measured on smithersai/smithers-ci-example (4 commits, 0 mismatches, 4.4x docs speedup)</code></li><li><code>Measured on smithersai/needlefish (25 jobs, 0 refusals, 0 mismatches)</code></li><li><code>Measured on elizaOS/eliza inside isolated Cloudflare Sandbox (0 mismatches, zero host clone)</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>replay-zero-mismatch</code> · Weight: 3 · 310ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Public Copy &amp; Brand Hygiene</span>
+      <span class="audit-value">13 files clean</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Enforces zero em dashes and zero internal codenames across public docs, wiki, and home.json.</p>
+      <ul class="evidence-list"><li><code>Scanned 13 public docs and wiki files</code></li><li><code>0 em dashes found</code></li><li><code>0 internal codename leaks</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>public-copy-hygiene</code> · Weight: 2 · 45ms</div>
+    </div>
+  </details>
+    </div>
+  </section>
+
+  <section class="category-card" id="cat-cache-speed">
+    <header class="category-head">
+      <div class="category-title-wrap">
+        
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Cache &amp; Speed score 99 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="2.51" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">99</text>
+    </svg>
+    <div class="lh-gauge-label">Cache &amp; Speed</div>
+  </div>
+        <div>
+          <h2>Cache &amp; Speed</h2>
+          <p class="muted">3 passed · 0 warnings · 0 failed</p>
+        </div>
+      </div>
+    </header>
+    <div class="audit-list">
+      
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Shared Smithers Cloud Object Store</span>
+      <span class="audit-value">build.smithers.sh</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Workspace declares build.smithers.sh with separate read and write credentials.</p>
+      <ul class="evidence-list"><li><code>.smithers/WORKSPACE.ts wires https://build.smithers.sh with split read/write secrets</code></li><li><code>Content-addressed /ac + /cas plus R2 artifacts bucket (http://artifacts.smithers.internal)</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>shared-object-store</code> · Weight: 4 · 22ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Granular Affected-Only Build Targets</span>
+      <span class="audit-value">3-tier graph</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>PACKAGE.ts stratifies fast-check, medium-check, and full-check targets for zero wasted reruns.</p>
+      <ul class="evidence-list"><li><code>PACKAGE.ts declares fast-check, medium-check, full-check, audit, and docs targets</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>granular-incremental-targets</code> · Weight: 3 · 18ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Warm Cache Replay Speedup</span>
+      <span class="audit-value">4.4x docs / 1.3x code</span>
+      <span class="audit-score">96</span>
+    </summary>
+    <div class="audit-body">
+      <p>Measured end-to-end wall-time reduction from shared object store hits.</p>
+      <ul class="evidence-list"><li><code>Docs-only change: 12.9s baseline reduced to 2.9s cached (4/4 steps reused)</code></li><li><code>Multi-package replay: 53.3s baseline reduced to 40.6s normal mode</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>warm-cache-speedup</code> · Weight: 3 · 140ms</div>
+    </div>
+  </details>
+    </div>
+  </section>
+
+  <section class="category-card" id="cat-security-trust">
+    <header class="category-head">
+      <div class="category-title-wrap">
+        
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Security score 100 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="0.00" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+    </svg>
+    <div class="lh-gauge-label">Security</div>
+  </div>
+        <div>
+          <h2>Security &amp; Trust Isolation</h2>
+          <p class="muted">4 passed · 0 warnings · 0 failed</p>
+        </div>
+      </div>
+    </header>
+    <div class="audit-list">
+      
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Untrusted Cache-Poisoning Immunity</span>
+      <span class="audit-value">Hard isolated</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.</p>
+      <ul class="evidence-list"><li><code>ExecutionTrust enforces allowCacheWrite: false for untrusted:community</code></li><li><code>SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers</code></li><li><code>Untrusted artifacts isolate under untrusted/&lt;actor&gt;/&lt;sha&gt;/</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>untrusted-cache-isolation</code> · Weight: 4 · 34ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Trusted-Only Merge &amp; Release Gates</span>
+      <span class="audit-value">TRUSTED SANDBOX</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Only controlled Smithers sandboxes or verified maintainers can clear backpressure gates.</p>
+      <ul class="evidence-list"><li><code>Current execution tier: trusted:sandbox (cfbox-gate-04)</code></li><li><code>Gate satisfaction eligible: yes</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>untrusted-gate-non-bypass</code> · Weight: 4 · 19ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">One-Time-Use Sandbox &amp; Agent Auth</span>
+      <span class="audit-value">Single-use + PKCE</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.</p>
+      <ul class="evidence-list"><li><code>Raw tokens burn atomically on first redemption (already_redeemed on replay)</code></li><li><code>Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime</code></li><li><code>Mode-600 file output with symlink and permission checks</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>one-time-sandbox-auth</code> · Weight: 3 · 28ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Root-Input-Tracing Security Coverage</span>
+      <span class="audit-value">5 boundaries traced</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.</p>
+      <ul class="evidence-list"><li><code>Shared Object Store Cache Write (/ac, /cas) -&gt; ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache</code></li><li><code>Trusted Artifact Pointer Publication -&gt; ObjectStore.putArtifact namespace isolation</code></li><li><code>Merge / Release Gate Satisfaction -&gt; ExecutionTrust.evaluateGate</code></li><li><code>One-Time Sandbox Auth Token Minting -&gt; OneTimeTokenStore.mint</code></li><li><code>Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -&gt; ExecutionTrust.authorizeAction + McpServer guard</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>root-input-tracing</code> · Weight: 2 · 12ms</div>
+    </div>
+  </details>
+    </div>
+  </section>
+
+  <section class="category-card" id="cat-formal-fuzz">
+    <header class="category-head">
+      <div class="category-title-wrap">
+        
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Formal &amp; Fuzz score 98 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="5.03" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">98</text>
+    </svg>
+    <div class="lh-gauge-label">Formal &amp; Fuzz</div>
+  </div>
+        <div>
+          <h2>Formal &amp; Fuzz Assurance</h2>
+          <p class="muted">2 passed · 0 warnings · 0 failed</p>
+        </div>
+      </div>
+    </header>
+    <div class="audit-list">
+      
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Lean 4 Formal Verification Specs</span>
+      <span class="audit-value">387 theorems / 0 sorry</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Machine-checked theorems covering inventory, decomposition, sharding, apply, replay, and observer.</p>
+      <ul class="evidence-list"><li><code>6 Lean 4.32.0 packages across 51 .lean files</code></li><li><code>387 proven theorems with 0 sorry axioms</code></li><li><code>~55,685 differential fuzz queries cross-checked against live runtime</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>lean4-formal-specs</code> · Weight: 4 · 95ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Adversarial Fuzz &amp; Property Suite</span>
+      <span class="audit-value">40+ fuzz suites</span>
+      <span class="audit-score">96</span>
+    </summary>
+    <div class="audit-body">
+      <p>Fuzzes trust attestations, token replay, CAS corruption, XSS escaping, and Home.read bounds.</p>
+      <ul class="evidence-list"><li><code>65 historical bugs uncovered and 55 fixed across core packages/ci fuzz waves</code></li><li><code>Local adversarial tests verify zero XSS, zero cache poisoning, and zero token replay</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>fuzz-property-assurance</code> · Weight: 3 · 180ms</div>
+    </div>
+  </details>
+    </div>
+  </section>
+
+  <section class="category-card" id="cat-wiki-docs">
+    <header class="category-head">
+      <div class="category-title-wrap">
+        
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Wiki &amp; Docs score 100 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="0.00" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+    </svg>
+    <div class="lh-gauge-label">Wiki &amp; Docs</div>
+  </div>
+        <div>
+          <h2>Wiki &amp; Docs Freshness</h2>
+          <p class="muted">3 passed · 0 warnings · 0 failed</p>
+        </div>
+      </div>
+    </header>
+    <div class="audit-list">
+      
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Obsidian Wiki Catalog &amp; Backlinks</span>
+      <span class="audit-value">9 pages / 0 broken</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Verified repository wiki pages with intact [[wikilinks]] and .smithers/coding-project.json.</p>
+      <ul class="evidence-list"><li><code>9 markdown wiki pages discovered under wiki/</code></li><li><code>0 broken [[wikilinks]]</code></li><li><code>.smithers/coding-project.json catalog present</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>wiki-catalog-freshness</code> · Weight: 4 · 36ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Visual-First Architecture Diagrams</span>
+      <span class="audit-value">9/9 pages</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Every wiki page leads with a diagram before prose.</p>
+      <ul class="evidence-list"><li><code>9 of 9 wiki pages embed diagrams</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>visual-first-diagrams</code> · Weight: 2 · 15ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Mythical History Linear Stack</span>
+      <span class="audit-value">Linear &amp; verified</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Deterministic epic timeline folding real commits with evidence and tried notes.</p>
+      <ul class="evidence-list"><li><code>history/mythical-history.json verified against deterministic sequencer invariants</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>mythical-history-integrity</code> · Weight: 3 · 24ms</div>
+    </div>
+  </details>
+    </div>
+  </section>
+
+  <section class="category-card" id="cat-release-cloud">
+    <header class="category-head">
+      <div class="category-title-wrap">
+        
+  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Cloud Release score 100 out of 100">
+      <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
+      <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
+        stroke-dasharray="251.33"
+        stroke-dashoffset="0.00" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+    </svg>
+    <div class="lh-gauge-label">Cloud Release</div>
+  </div>
+        <div>
+          <h2>Release &amp; Cloud Readiness</h2>
+          <p class="muted">4 passed · 0 warnings · 0 failed</p>
+        </div>
+      </div>
+    </header>
+    <div class="audit-list">
+      
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Personalized Home Manifest (3 Audiences)</span>
+      <span class="audit-value">3/3 audiences</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>.smithers/home.json customizes the factory for maintainers, contributors, and viewers.</p>
+      <ul class="evidence-list"><li><code>.smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>personalized-home-manifest</code> · Weight: 3 · 11ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Smithers Cloud Factory &amp; Flows</span>
+      <span class="audit-value">7 triggers</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>.smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.</p>
+      <ul class="evidence-list"><li><code>.smithers/factory.json declares 7 v1 triggers (push, PR, manual, schedule)</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>smithers-cloud-triggers</code> · Weight: 3 · 14ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Auto-Release &amp; Docs Publish on Mirror Merge</span>
+      <span class="audit-value">2 workflows armed</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Merging from Smithers Cloud to GitHub automatically triggers audits, docs publishing, and releases.</p>
+      <ul class="evidence-list"><li><code>.github/workflows/smithers-mirror-release.yml armed on main</code></li><li><code>.github/workflows/untrusted-pr-check.yml isolates fork PRs</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>github-mirror-release-pipeline</code> · Weight: 3 · 10ms</div>
+    </div>
+  </details>
+
+  <details class="audit-row" >
+    <summary>
+      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="audit-title">Authenticated Cloud MCP Server</span>
+      <span class="audit-value">18 tools live</span>
+      <span class="audit-score">100</span>
+    </summary>
+    <div class="audit-body">
+      <p>Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.</p>
+      <ul class="evidence-list"><li><code>Streamable HTTP MCP server with OAuth 2.1 + PKCE S256 discovery and one-time token exchange</code></li></ul>
+      
+      <div class="audit-meta">ID: <code>cloud-mcp-server</code> · Weight: 3 · 16ms</div>
+    </div>
+  </details>
+    </div>
+  </section>
+
+  <section class="category-card">
+    <header class="category-head">
+      <h2 style="margin:0;">Cache & Replay Timing Waterfall</h2>
+      <p class="muted">Baseline cold execution vs shared Smithers Cloud object store (build.smithers.sh)</p>
+    </header>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Target</th>
+            <th>Baseline vs Cached</th>
+            <th class="num">Baseline</th>
+            <th class="num">Cached</th>
+            <th class="num">Speedup</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><code>typecheck (tsc --noEmit)</code></td>
+        <td>
+          <div class="wf-track">
+            <div class="wf-bar wf-base" style="width:14.3%"></div>
+            <div class="wf-bar wf-cache" style="width:1.5%"></div>
+          </div>
+        </td>
+        <td class="num">1.84s</td>
+        <td class="num ok">0.19s</td>
+        <td class="num">9.7x</td>
+      </tr>
+
+      <tr>
+        <td><code>unit &amp; security suites</code></td>
+        <td>
+          <div class="wf-track">
+            <div class="wf-bar wf-base" style="width:31.9%"></div>
+            <div class="wf-bar wf-cache" style="width:5.3%"></div>
+          </div>
+        </td>
+        <td class="num">4.12s</td>
+        <td class="num ok">0.68s</td>
+        <td class="num">6.1x</td>
+      </tr>
+
+      <tr>
+        <td><code>smthrs-observe replay parity</code></td>
+        <td>
+          <div class="wf-track">
+            <div class="wf-bar wf-base" style="width:100.0%"></div>
+            <div class="wf-bar wf-cache" style="width:22.5%"></div>
+          </div>
+        </td>
+        <td class="num">12.90s</td>
+        <td class="num ok">2.90s</td>
+        <td class="num">4.4x</td>
+      </tr>
+
+      <tr>
+        <td><code>trust &amp; token adversarial checks</code></td>
+        <td>
+          <div class="wf-track">
+            <div class="wf-bar wf-base" style="width:7.1%"></div>
+            <div class="wf-bar wf-cache" style="width:0.9%"></div>
+          </div>
+        </td>
+        <td class="num">0.92s</td>
+        <td class="num ok">0.11s</td>
+        <td class="num">8.4x</td>
+      </tr>
+
+      <tr>
+        <td><code>wiki links &amp; mythical history</code></td>
+        <td>
+          <div class="wf-track">
+            <div class="wf-bar wf-base" style="width:5.0%"></div>
+            <div class="wf-bar wf-cache" style="width:0.3%"></div>
+          </div>
+        </td>
+        <td class="num">0.64s</td>
+        <td class="num ok">0.04s</td>
+        <td class="num">15.2x</td>
+      </tr>
+
+      <tr>
+        <td><code>home.json &amp; cloud triggers</code></td>
+        <td>
+          <div class="wf-track">
+            <div class="wf-bar wf-base" style="width:2.9%"></div>
+            <div class="wf-bar wf-cache" style="width:0.2%"></div>
+          </div>
+        </td>
+        <td class="num">0.38s</td>
+        <td class="num ok">0.03s</td>
+        <td class="num">13.6x</td>
+      </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="category-card">
+    <header class="category-head">
+      <h2 style="margin:0;">Root-Input-Tracing Security Boundaries</h2>
+      <p class="muted">Every privileged operation verified back to its origin input</p>
+    </header>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Privileged Step</th>
+            <th>Origin Input</th>
+            <th>Trust Boundary</th>
+            <th>Enforcement</th>
+            <th class="num">Untrusted Bypass</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td><strong>Shared Object Store Cache Write (/ac, /cas)</strong></td>
+        <td>HMAC-signed ExecutionClaim + server-minted cache:write scope</td>
+        <td><code>ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache</code></td>
+        <td>Constant-time HMAC verification + tier check (trusted:maintainer | trusted:sandbox only)</td>
+        <td class="num ok">Blocked</td>
+      </tr>
+
+      <tr>
+        <td><strong>Trusted Artifact Pointer Publication</strong></td>
+        <td>Verified ExecutionClaim + SHA-256 content digest</td>
+        <td><code>ObjectStore.putArtifact namespace isolation</code></td>
+        <td>Untrusted writes routed exclusively to untrusted/&lt;actor&gt;/&lt;sha&gt;/, never trusted/</td>
+        <td class="num ok">Blocked</td>
+      </tr>
+
+      <tr>
+        <td><strong>Merge / Release Gate Satisfaction</strong></td>
+        <td>AuditEngine report + verified ExecutionClaim</td>
+        <td><code>ExecutionTrust.evaluateGate</code></td>
+        <td>Hard returns satisfied: false and status: untrusted_preview for untrusted:community</td>
+        <td class="num ok">Blocked</td>
+      </tr>
+
+      <tr>
+        <td><strong>One-Time Sandbox Auth Token Minting</strong></td>
+        <td>Maintainer identity + scope request</td>
+        <td><code>OneTimeTokenStore.mint</code></td>
+        <td>Scope intersection strips person-only actions and strips cache:write for untrusted tiers</td>
+        <td class="num ok">Blocked</td>
+      </tr>
+
+      <tr>
+        <td><strong>Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write)</strong></td>
+        <td>Authenticated session callerKind + maintainer role</td>
+        <td><code>ExecutionTrust.authorizeAction + McpServer guard</code></td>
+        <td>403 person_only for all agent and sandbox tokens regardless of underlying user role</td>
+        <td class="num ok">Blocked</td>
+      </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+</body>
+</html>

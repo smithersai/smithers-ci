@@ -1,0 +1,74 @@
+{
+  "name": "smithers-ci",
+  "version": "1.0.0-rc.20",
+  "description": "Fast kernel-recorded incremental CI, Lighthouse backpressure audits, Cloud MCP, Wiki, and Mythical History built on Smithers Cloud.",
+  "license": "MIT",
+  "author": "Smithers",
+  "type": "module",
+  "homepage": "https://smithers.sh/smithersai/smithers-ci",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smithersai/smithers-ci.git"
+  },
+  "bugs": {
+    "url": "https://github.com/smithersai/smithers-ci/issues"
+  },
+  "bin": {
+    "smithers-ci": "./bin/smithers-ci.mjs"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./trust": "./src/trust/ExecutionTrust.ts",
+    "./auth": "./src/auth/OneTimeToken.ts",
+    "./store": "./src/store/ObjectStore.ts",
+    "./audit": "./src/audit/AuditEngine.ts",
+    "./history": "./src/history/MythicalHistory.ts",
+    "./wiki": "./src/wiki/WikiEngine.ts",
+    "./factory": "./src/factory/FactoryState.ts",
+    "./mcp": "./src/mcp/McpServer.ts"
+  },
+  "files": [
+    "bin/*.mjs",
+    "src/**/*.ts",
+    "dist/**",
+    "wiki/**/*.md",
+    "history/**/*.json",
+    ".smithers/home.json",
+    ".smithers/factory.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fast-check": "bun run typecheck && bun run test",
+    "audit": "node --experimental-strip-types bin/smithers-ci.mjs audit --out .smithers/reports",
+    "audit:untrusted": "node --experimental-strip-types bin/smithers-ci.mjs audit --trust untrusted:community --out .smithers/reports-untrusted",
+    "wiki:check": "node --experimental-strip-types bin/smithers-ci.mjs wiki check",
+    "home:check": "node --experimental-strip-types bin/smithers-ci.mjs home check",
+    "history:verify": "node --experimental-strip-types bin/smithers-ci.mjs history verify",
+    "snapshot:generate": "node --experimental-strip-types scripts/generate-snapshot.ts",
+    "mcp:serve": "node --experimental-strip-types bin/smithers-ci.mjs mcp serve",
+    "dev:ui": "vite --config app/vite.config.ts",
+    "build:ui": "bun run snapshot:generate && vite build --config app/vite.config.ts",
+    "medium-check": "bun run fast-check && bun run wiki:check && bun run home:check && bun run history:verify && bun run audit",
+    "full-check": "bun run medium-check && bun run build:ui"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.0"
+  }
+}

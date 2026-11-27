@@ -1,0 +1,213 @@
+{
+  "docs": "https://ci.smithers.sh/llms.txt",
+  "sections": [
+    {
+      "title": "Maintainer Command Center",
+      "audience": "maintainer",
+      "blocks": [
+        {
+          "type": "action",
+          "flow": "branch.new",
+          "title": "New branch",
+          "key": "b"
+        },
+        {
+          "type": "issues",
+          "title": "Issues and PRs to triage"
+        },
+        {
+          "type": "stack",
+          "title": "Public TODO and changeset stack"
+        },
+        {
+          "type": "runs",
+          "title": "Trusted sandbox and community runs"
+        },
+        {
+          "type": "code",
+          "title": "Mint a one-time sandbox auth token",
+          "language": "sh",
+          "code": "bunx smithers-ci auth mint --subject sandbox:cfbox-01 --tier trusted:sandbox --out .smithers/tokens/cfbox-01"
+        }
+      ]
+    },
+    {
+      "title": "Contributor Workbench",
+      "audience": "contributor",
+      "blocks": [
+        {
+          "type": "code",
+          "title": "Run local fast-check and untrusted Lighthouse preview",
+          "language": "sh",
+          "code": "bun install\nbun run fast-check\nbun run audit:untrusted"
+        },
+        {
+          "type": "cards",
+          "title": "How contributions land safely",
+          "cards": [
+            {
+              "title": "Run freely with warm cache reads",
+              "text": "Every contributor gets instant read hits from build.smithers.sh. Untrusted outputs stay isolated and never poison the cache."
+            },
+            {
+              "title": "Attach your own agent via Cloud MCP",
+              "text": "Connect Claude Code, Codex, or Antigravity to smithers.sh/smithersai/smithers-ci/mcp to draft TODOs, issues, PRs, and stacked changesets."
+            },
+            {
+              "title": "Review the Lighthouse audit preview",
+              "text": "Every community PR renders a 6-category Lighthouse backpressure preview. A controlled sandbox or maintainer certifies the final gate."
+            },
+            {
+              "title": "People merge and credit stays yours",
+              "text": "Your PR merges under your name with full credit. Agents never approve or merge."
+            }
+          ]
+        },
+        {
+          "type": "links",
+          "title": "Contributor links",
+          "links": [
+            {
+              "label": "Public TODO stack",
+              "url": "https://smithers.sh/smithersai/smithers-ci"
+            },
+            {
+              "label": "Issues",
+              "url": "https://github.com/smithersai/smithers-ci/issues"
+            },
+            {
+              "label": "Pull requests",
+              "url": "https://github.com/smithersai/smithers-ci/pulls"
+            },
+            {
+              "label": "Cloud MCP endpoint",
+              "url": "https://smithers.sh/smithersai/smithers-ci/mcp"
+            }
+          ]
+        },
+        {
+          "type": "prompt",
+          "title": "Ask about Smithers CI",
+          "placeholder": "Ask about smthrs-observe, Lighthouse audits, Cloud MCP, or trust isolation..."
+        }
+      ]
+    },
+    {
+      "audience": "everyone",
+      "blocks": [
+        {
+          "type": "hero",
+          "title": "Smithers CI",
+          "tagline": "Fast kernel-recorded incremental CI with zero stale passes, Lighthouse backpressure audits, and a public Smithers Cloud factory.",
+          "text": "Read your existing CI, record exact file reads at the Linux kernel boundary, share one cloud object store, and inspect every commit through a 0 to 100 Lighthouse audit report.",
+          "install": "bunx smithers-ci --commits 4",
+          "announcement": {
+            "label": "Public on Smithers Cloud with live MCP, Wiki, and Mythical History",
+            "url": "https://ci.smithers.sh"
+          },
+          "actions": [
+            {
+              "label": "Site & Docs",
+              "url": "https://ci.smithers.sh"
+            },
+            {
+              "label": "GitHub Mirror",
+              "url": "https://github.com/smithersai/smithers-ci"
+            },
+            {
+              "label": "Benchmarks",
+              "url": "https://ci.smithers.sh/docs/about/benchmarks"
+            }
+          ]
+        },
+        {
+          "type": "code",
+          "file": "audit.sh",
+          "language": "sh",
+          "code": "# Measure speedup on your own history without changing a file\nbunx smithers-ci --commits 4\n\n# Run the 6-category Lighthouse backpressure audit\nbun run audit\n\n# Mint a single-use sandbox credential for an agent\nbunx smithers-ci auth mint --subject sandbox:cfbox-01 --tier trusted:sandbox"
+        },
+        {
+          "type": "stats",
+          "stats": [
+            {
+              "value": "0 mismatches",
+              "label": "Kernel-recorded parity"
+            },
+            {
+              "value": "387 theorems",
+              "label": "Lean 4 verified (0 sorry)"
+            },
+            {
+              "value": "4.4x faster",
+              "label": "Measured docs-only replay"
+            },
+            {
+              "value": "6 categories",
+              "label": "Lighthouse audit report"
+            },
+            {
+              "value": "Single-use",
+              "label": "Attenuated sandbox auth"
+            },
+            {
+              "value": "MIT",
+              "label": "Open source license"
+            }
+          ]
+        },
+        {
+          "type": "cards",
+          "title": "Built as a well-oiled coding factory",
+          "cards": [
+            {
+              "label": "Backpressure",
+              "title": "Lighthouse Audit Report",
+              "text": "Every run produces 0 to 100 radial gauges across correctness, cache speed, trust security, Lean 4 proofs, wiki freshness, and release readiness.",
+              "url": "https://ci.smithers.sh"
+            },
+            {
+              "label": "Security",
+              "title": "Trusted vs Untrusted Execution",
+              "text": "Non-maintainers run freely with warm cache reads, while cache writes and merge gates accept only controlled sandboxes and maintainers.",
+              "url": "https://github.com/smithersai/smithers-ci/blob/main/wiki/trust-and-isolation.md"
+            },
+            {
+              "label": "Agents",
+              "title": "Authenticated Cloud MCP",
+              "text": "Bring your own agent over Streamable HTTP MCP with one-time smo_ tokens for artifacts, TODOs, issues, PRs, and stacked changesets.",
+              "url": "https://github.com/smithersai/smithers-ci/blob/main/wiki/mcp-and-one-time-auth.md"
+            },
+            {
+              "label": "Memory",
+              "title": "Obsidian Wiki & Mythical History",
+              "text": "Visual-first repository wiki with backlinks paired with a deterministic linear Mythical History of every engineering epic.",
+              "url": "https://github.com/smithersai/smithers-ci/blob/main/wiki/index.md"
+            }
+          ]
+        },
+        {
+          "type": "releases",
+          "title": "Releases",
+          "releases": [
+            {
+              "name": "v1.0.0-rc.20",
+              "url": "https://github.com/smithersai/smithers-ci/releases",
+              "date": "2026-11-27",
+              "summary": "Public Smithers Cloud factory switchover with Lighthouse backpressure audit, Cloud MCP, one-time sandbox auth, Wiki, and Mythical History."
+            },
+            {
+              "name": "v1.0.0-rc.19",
+              "url": "https://github.com/smithersai/smithers/releases/tag/v1.0.0-rc.19",
+              "date": "2026-11-26",
+              "summary": "Native smthrs-observe record format /7, 387 Lean 4 theorems, 40 fuzz suites, and ci.smithers.sh launch."
+            }
+          ],
+          "more": {
+            "label": "All releases",
+            "url": "https://github.com/smithersai/smithers-ci/releases"
+          }
+        }
+      ]
+    }
+  ]
+}

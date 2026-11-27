@@ -1,0 +1,68 @@
+{
+  "repository": "smithersai/smithers-ci",
+  "wikiRoot": "wiki",
+  "checks": [
+    { "id": "fast-check", "command": "bun run fast-check", "tier": "fast" },
+    { "id": "wiki-check", "command": "bun run wiki:check", "tier": "medium" },
+    { "id": "home-check", "command": "bun run home:check", "tier": "medium" },
+    { "id": "history-verify", "command": "bun run history:verify", "tier": "medium" },
+    { "id": "lighthouse-audit", "command": "bun run audit", "tier": "medium" },
+    { "id": "full-check", "command": "bun run full-check", "tier": "full" }
+  ],
+  "pages": [
+    {
+      "slug": "index",
+      "title": "Smithers CI Architecture Overview",
+      "doc": "wiki/index.md",
+      "inputs": ["README.md", ".smithers/FACTORY.ts", ".smithers/WORKSPACE.ts"]
+    },
+    {
+      "slug": "kernel-observer",
+      "title": "Kernel Observer (smthrs-observe)",
+      "doc": "wiki/kernel-observer.md",
+      "inputs": ["wiki/kernel-observer.md"]
+    },
+    {
+      "slug": "incremental-replay",
+      "title": "Incremental Replay Pipeline",
+      "doc": "wiki/incremental-replay.md",
+      "inputs": ["wiki/incremental-replay.md"]
+    },
+    {
+      "slug": "shared-object-store",
+      "title": "Shared Smithers Cloud Object Store",
+      "doc": "wiki/shared-object-store.md",
+      "inputs": ["src/store/ObjectStore.ts", ".smithers/WORKSPACE.ts"]
+    },
+    {
+      "slug": "trust-and-isolation",
+      "title": "Execution Trust and Isolation Model",
+      "doc": "wiki/trust-and-isolation.md",
+      "inputs": ["src/trust/ExecutionTrust.ts"]
+    },
+    {
+      "slug": "lighthouse-backpressure",
+      "title": "Lighthouse Backpressure Audit Report",
+      "doc": "wiki/lighthouse-backpressure.md",
+      "inputs": ["src/audit/AuditEngine.ts", "src/audit/LighthouseHtml.ts"]
+    },
+    {
+      "slug": "mcp-and-one-time-auth",
+      "title": "Cloud MCP Server and One-Time Sandbox Auth",
+      "doc": "wiki/mcp-and-one-time-auth.md",
+      "inputs": ["src/auth/OneTimeToken.ts", "src/mcp/McpServer.ts"]
+    },
+    {
+      "slug": "release-and-mirror",
+      "title": "GitHub Mirror, Automated Releases, and Docs Publishing",
+      "doc": "wiki/release-and-mirror.md",
+      "inputs": [".github/workflows/smithers-mirror-release.yml", ".github/workflows/untrusted-pr-check.yml"]
+    },
+    {
+      "slug": "formal-verification",
+      "title": "Formal Verification and Fuzz Assurance",
+      "doc": "wiki/formal-verification.md",
+      "inputs": ["src/trust/ExecutionTrust.test.ts", "src/auth/OneTimeToken.test.ts", "src/store/ObjectStore.test.ts"]
+    }
+  ]
+}

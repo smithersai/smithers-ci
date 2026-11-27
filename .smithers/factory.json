@@ -1,0 +1,146 @@
+{
+  "apiVersion": 1,
+  "id": "repository",
+  "summary": "Smithers CI: kernel-recorded incremental CI, Lighthouse backpressure audits, shared cloud object store, Cloud MCP, Wiki, and Mythical History.",
+  "contributes": {
+    "triggers": [
+      {
+        "on": "github.push",
+        "flow": "ci",
+        "branches": ["main", "stack/**"]
+      },
+      {
+        "on": "github.pull_request",
+        "flow": "ci",
+        "actions": ["opened", "synchronize", "reopened"]
+      },
+      {
+        "on": "github.push",
+        "flow": "docs-publish",
+        "branches": ["main"]
+      },
+      {
+        "on": "github.push",
+        "flow": "release",
+        "tags": ["v*"]
+      },
+      {
+        "on": "cron",
+        "flow": "audit",
+        "cron": "0 6 * * *",
+        "timezone": "America/Los_Angeles",
+        "overlap": "skip",
+        "catchUp": "none",
+        "maxCatchUp": 0
+      },
+      {
+        "on": "manual",
+        "flow": "audit",
+        "title": "Run Lighthouse Backpressure Audit"
+      },
+      {
+        "on": "manual",
+        "flow": "release",
+        "title": "Cut & Publish Release"
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "ci",
+      "summary": "Run fast-check, trust checks, wiki check, home check, and Lighthouse audit.",
+      "description": "Trusted Smithers Cloud CI gate running inside controlled Cloudflare job machines.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/flows/ci/flow.ts",
+      "capabilities": ["fs:read:**", "proc:spawn:bun *", "proc:spawn:node *"],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "audit",
+      "summary": "Generate the 6-category Lighthouse backpressure report and upload to the shared object store.",
+      "description": "Scores correctness, cache speed, security trust isolation, formal/fuzz assurance, wiki freshness, and cloud release readiness.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/flows/audit/flow.ts",
+      "capabilities": ["fs:read:**", "proc:spawn:node *"],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "docs-publish",
+      "summary": "Publish the personalized Factory UI, Obsidian wiki, and Lighthouse audit report.",
+      "description": "Automatically triggered when Smithers Cloud merges to GitHub main.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/flows/docs-publish/flow.ts",
+      "capabilities": ["fs:read:**", "proc:spawn:bun *"],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "release",
+      "summary": "Verify trusted Lighthouse gate >= 90 and publish verified release artifacts.",
+      "description": "Packs tarballs, validates provenance, publishes to npm, and updates GitHub Releases.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/flows/release/flow.ts",
+      "capabilities": ["fs:read:**", "proc:spawn:bun *", "proc:spawn:node *"],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "wiki",
+      "summary": "Verify Obsidian wiki freshness, backlinks, and visual-first diagrams.",
+      "description": "Validates zero broken [[wikilinks]], diagram presence, and regenerates llms.txt.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/flows/wiki/flow.ts",
+      "capabilities": ["fs:read:**", "proc:spawn:node *"],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "mythical-history",
+      "summary": "Verify linear Mythical History stack and deterministic git-ref export manifest.",
+      "description": "Folds merged commits and checks idempotence and epic ordering.",
+      "featured": true,
+      "kind": "ts",
+      "path": ".smithers/flows/mythical-history/flow.ts",
+      "capabilities": ["fs:read:**", "proc:spawn:node *"],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "pr-triage",
+      "summary": "Review pull requests and untrusted preview audits without executing untrusted code.",
+      "description": "Reads diff and Lighthouse preview receipt, recommending controlled sandbox verification.",
+      "featured": true,
+      "kind": "mdx",
+      "path": ".smithers/flows/pr-triage/flow.mdx",
+      "capabilities": ["fs:read:**"],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    },
+    {
+      "id": "untrusted-replay",
+      "summary": "Run community replay inside an isolated Cloudflare Sandbox with read-only cache access.",
+      "description": "Encourages open community testing while structurally blocking cache poisoning and gate bypass.",
+      "featured": true,
+      "kind": "mdx",
+      "path": ".smithers/flows/untrusted-replay/flow.mdx",
+      "capabilities": ["fs:read:**"],
+      "model": null,
+      "modelInvocable": true,
+      "flows": []
+    }
+  ]
+}
