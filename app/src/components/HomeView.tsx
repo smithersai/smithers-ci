@@ -22,7 +22,7 @@ export function HomeView({ snapshot, role, onNavigate, onRequestWaitlist }: Home
     setTimeout(() => setCopied(null), 1600)
   }
 
-  const audit = snapshot.trustedAudit
+  const audit = snapshot.audit
 
   return (
     <div>
@@ -120,10 +120,12 @@ export function HomeView({ snapshot, role, onNavigate, onRequestWaitlist }: Home
 
           <div className="grid-4">
             <div className="stat-card">
-              <div className="stat-value" style={{ color: "var(--lh-pass)" }}>
+              <div className="stat-value" style={{ color: audit.gate.satisfied ? "var(--lh-pass)" : "var(--lh-avg)" }}>
                 {audit.overallScore}/100
               </div>
-              <div className="stat-label">Trusted Lighthouse Gate</div>
+              <div className="stat-label">
+                {audit.gate.satisfied ? "Trusted Lighthouse Gate" : "Checkout Audit (Untrusted Preview)"}
+              </div>
             </div>
             <div className="stat-card">
               <div className="stat-value">{snapshot.todos.filter((t) => t.status !== "done").length} open</div>
@@ -224,7 +226,7 @@ export function HomeView({ snapshot, role, onNavigate, onRequestWaitlist }: Home
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <strong style={{ fontSize: "0.9rem" }}>Live Backpressure Snapshot</strong>
-              <span className="pill pill-pass">{audit.policy.provenanceBadge}</span>
+              <span className={`pill ${audit.execution.trusted ? "pill-pass" : "pill-warn"}`}>{audit.policy.provenanceBadge}</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
               {audit.categories.map((cat) => (

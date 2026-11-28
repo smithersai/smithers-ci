@@ -1,62 +1,62 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-11-27T13:19:01.805Z",
+  "generatedAt": "2026-11-28T00:23:32.661Z",
   "repository": "smithersai/smithers-ci",
-  "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
+  "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+  "checkoutState": "clean",
   "execution": {
-    "effectiveTier": "trusted:sandbox",
-    "claimedTier": "trusted:sandbox",
-    "callerKind": "sandbox",
-    "actor": "cfbox-gate-04",
+    "effectiveTier": "untrusted:community",
+    "claimedTier": "untrusted:community",
+    "callerKind": "person",
+    "actor": "local-snapshot",
     "repository": "smithersai/smithers-ci",
-    "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
-    "sandboxId": "cfbox-gate-04",
-    "trusted": true,
+    "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+    "sandboxId": null,
+    "trusted": false,
     "downgraded": false,
     "downgradeReason": null,
-    "verifiedAt": "2026-11-27T13:19:01.801Z",
-    "expiresAt": "2026-11-27T13:29:01.800Z"
+    "verifiedAt": "2026-11-28T00:23:32.657Z"
   },
   "policy": {
     "allowExecution": true,
     "allowCacheRead": true,
-    "allowCacheWrite": true,
-    "allowTrustedArtifactWrite": true,
+    "allowCacheWrite": false,
+    "allowTrustedArtifactWrite": false,
     "allowUntrustedArtifactWrite": true,
-    "canSatisfyGates": true,
-    "artifactNamespace": "trusted/46412bca49c3a0f1234567890abcdef123456789",
-    "provenanceBadge": "TRUSTED SANDBOX"
+    "canSatisfyGates": false,
+    "artifactNamespace": "untrusted/local-snapshot/1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+    "provenanceBadge": "UNTRUSTED COMMUNITY"
   },
   "gate": {
     "gate": "lighthouse-backpressure",
-    "passed": true,
-    "satisfied": true,
-    "status": "passed",
-    "trustTier": "trusted:sandbox",
-    "reason": "Gate lighthouse-backpressure verified by trusted:sandbox (cfbox-gate-04)."
+    "passed": false,
+    "satisfied": false,
+    "status": "untrusted_preview",
+    "trustTier": "untrusted:community",
+    "reason": "Untrusted community execution is encouraged for fast local feedback, but cannot satisfy required merge or release gates or write to the shared cache."
   },
   "gateReceipt": {
     "repository": "smithersai/smithers-ci",
-    "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
+    "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
     "gate": "lighthouse-backpressure",
-    "score": 100,
-    "passed": true,
-    "satisfied": true,
-    "trustTier": "trusted:sandbox",
-    "actor": "cfbox-gate-04",
-    "verifiedAt": "2026-11-27T13:19:01.801Z"
+    "score": 82,
+    "passed": false,
+    "satisfied": false,
+    "trustTier": "untrusted:community",
+    "actor": "local-snapshot",
+    "verifiedAt": "2026-11-28T00:23:32.657Z"
   },
-  "overallScore": 100,
-  "overallRating": "pass",
+  "overallScore": 82,
+  "overallRating": "average",
   "categories": [
     {
       "id": "correctness",
       "title": "Correctness & Determinism",
       "shortTitle": "Correctness",
-      "score": 100,
-      "rating": "pass",
-      "passedCount": 4,
-      "warnCount": 0,
+      "score": 58,
+      "rating": "average",
+      "passedCount": 1,
+      "warnCount": 3,
       "failCount": 0,
       "audits": [
         {
@@ -64,46 +64,46 @@
           "category": "correctness",
           "title": "Strict TypeScript Typecheck",
           "description": "Every core module, worker route, and factory UI file compiles with strict mode enabled.",
-          "status": "pass",
-          "score": 100,
+          "status": "warn",
+          "score": 50,
           "weight": 3,
-          "displayValue": "0 errors",
-          "durationMs": 420,
+          "displayValue": "Not measured",
+          "durationMs": 0,
           "evidence": [
             "tsconfig.json strict: true, noUncheckedIndexedAccess: true",
-            "tsc --noEmit exited 0"
-          ]
+            "Typecheck was not executed in this audit invocation; run `bun run typecheck` and supply explicit measured status to clear this check"
+          ],
+          "remediation": "Run `bun run typecheck` and pass the observed result."
         },
         {
           "id": "unit-integration-tests",
           "category": "correctness",
           "title": "Unit, Security & Protocol Suites",
           "description": "Verifies trust isolation, one-time tokens, CAS integrity, audit scoring, wiki, history, and MCP tools.",
-          "status": "pass",
-          "score": 100,
+          "status": "warn",
+          "score": 50,
           "weight": 4,
-          "displayValue": "36/36 passed",
-          "durationMs": 760,
+          "displayValue": "Not measured",
+          "durationMs": 0,
           "evidence": [
-            "Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP",
-            "Observed 36 passing and 0 failing tests"
-          ]
+            "No test results were supplied to this audit invocation; run `bun run test` and supply observed counts to satisfy this check"
+          ],
+          "remediation": "Run `bun run test` and pass the observed test counts."
         },
         {
           "id": "replay-zero-mismatch",
           "category": "correctness",
           "title": "Kernel-Recorded Zero-Mismatch Parity",
           "description": "smthrs-observe seccomp-unotify recording guarantees cached verdicts match clean baseline execution.",
-          "status": "pass",
-          "score": 100,
+          "status": "warn",
+          "score": 50,
           "weight": 3,
-          "displayValue": "0 mismatches",
-          "durationMs": 310,
+          "displayValue": "Not measured",
+          "durationMs": 0,
           "evidence": [
-            "Measured on smithersai/smithers-ci-example (4 commits, 0 mismatches, 4.4x docs speedup)",
-            "Measured on smithersai/needlefish (25 jobs, 0 refusals, 0 mismatches)",
-            "Measured on elizaOS/eliza inside isolated Cloudflare Sandbox (0 mismatches, zero host clone)"
-          ]
+            "Replay parity was not measured in this audit invocation; run `bun run replay` and supply measured replay results"
+          ],
+          "remediation": "Run incremental replay against this checkout and provide measured parity evidence."
         },
         {
           "id": "public-copy-hygiene",
@@ -114,7 +114,7 @@
           "score": 100,
           "weight": 2,
           "displayValue": "13 files clean",
-          "durationMs": 45,
+          "durationMs": 0,
           "evidence": [
             "Scanned 13 public docs and wiki files",
             "0 em dashes found",
@@ -127,10 +127,10 @@
       "id": "cache-speed",
       "title": "Cache & Speed",
       "shortTitle": "Cache & Speed",
-      "score": 99,
-      "rating": "pass",
-      "passedCount": 3,
-      "warnCount": 0,
+      "score": 85,
+      "rating": "average",
+      "passedCount": 2,
+      "warnCount": 1,
       "failCount": 0,
       "audits": [
         {
@@ -142,9 +142,9 @@
           "score": 100,
           "weight": 4,
           "displayValue": "build.smithers.sh",
-          "durationMs": 22,
+          "durationMs": 0,
           "evidence": [
-            ".smithers/WORKSPACE.ts wires https://build.smithers.sh with split read/write secrets",
+            ".smithers/WORKSPACE.ts declares https://build.smithers.sh with split read/write secret names",
             "Content-addressed /ac + /cas plus R2 artifacts bucket (http://artifacts.smithers.internal)"
           ]
         },
@@ -157,7 +157,7 @@
           "score": 100,
           "weight": 3,
           "displayValue": "3-tier graph",
-          "durationMs": 18,
+          "durationMs": 0,
           "evidence": [
             "PACKAGE.ts declares fast-check, medium-check, full-check, audit, and docs targets"
           ]
@@ -167,22 +167,22 @@
           "category": "cache-speed",
           "title": "Warm Cache Replay Speedup",
           "description": "Measured end-to-end wall-time reduction from shared object store hits.",
-          "status": "pass",
-          "score": 96,
+          "status": "warn",
+          "score": 50,
           "weight": 3,
-          "displayValue": "4.4x docs / 1.3x code",
-          "durationMs": 140,
+          "displayValue": "Not measured",
+          "durationMs": 0,
           "evidence": [
-            "Docs-only change: 12.9s baseline reduced to 2.9s cached (4/4 steps reused)",
-            "Multi-package replay: 53.3s baseline reduced to 40.6s normal mode"
-          ]
+            "Warm cache replay speedup was not measured in this audit invocation"
+          ],
+          "remediation": "Run cached replay on this checkout and pass measured timing evidence."
         }
       ]
     },
     {
       "id": "security-trust",
-      "title": "Security & Trust Isolation",
-      "shortTitle": "Security",
+      "title": "Trust Source Inventory & Execution Policy",
+      "shortTitle": "Trust inventory",
       "score": 100,
       "rating": "pass",
       "passedCount": 4,
@@ -192,60 +192,57 @@
         {
           "id": "untrusted-cache-isolation",
           "category": "security-trust",
-          "title": "Untrusted Cache-Poisoning Immunity",
-          "description": "Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.",
+          "title": "Cache Isolation Source Files",
+          "description": "Checks for the trust and object-store source files.",
           "status": "pass",
           "score": 100,
           "weight": 4,
-          "displayValue": "Hard isolated",
-          "durationMs": 34,
+          "displayValue": "Modules present",
+          "durationMs": 0,
           "evidence": [
-            "ExecutionTrust enforces allowCacheWrite: false for untrusted:community",
-            "SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers",
-            "Untrusted artifacts isolate under untrusted/<actor>/<sha>/"
+            "Trust source file: present",
+            "Object store source file: present"
           ]
         },
         {
           "id": "untrusted-gate-non-bypass",
           "category": "security-trust",
-          "title": "Trusted-Only Merge & Release Gates",
-          "description": "Only controlled Smithers sandboxes or verified maintainers can clear backpressure gates.",
+          "title": "Current Execution Policy",
+          "description": "Reports gate eligibility for this execution.",
           "status": "pass",
           "score": 100,
           "weight": 4,
-          "displayValue": "TRUSTED SANDBOX",
-          "durationMs": 19,
+          "displayValue": "PREVIEW ONLY",
+          "durationMs": 0,
           "evidence": [
-            "Current execution tier: trusted:sandbox (cfbox-gate-04)",
-            "Gate satisfaction eligible: yes"
+            "Current execution tier: untrusted:community (local-snapshot)",
+            "Gate satisfaction eligible: no (untrusted local/community preview)"
           ]
         },
         {
           "id": "one-time-sandbox-auth",
           "category": "security-trust",
-          "title": "One-Time-Use Sandbox & Agent Auth",
-          "description": "Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.",
+          "title": "Token Implementation File",
+          "description": "Checks for the one-time token source file.",
           "status": "pass",
           "score": 100,
           "weight": 3,
-          "displayValue": "Single-use + PKCE",
-          "durationMs": 28,
+          "displayValue": "Module present",
+          "durationMs": 0,
           "evidence": [
-            "Raw tokens burn atomically on first redemption (already_redeemed on replay)",
-            "Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime",
-            "Mode-600 file output with symlink and permission checks"
+            "src/auth/OneTimeToken.ts present"
           ]
         },
         {
           "id": "root-input-tracing",
           "category": "security-trust",
-          "title": "Root-Input-Tracing Security Coverage",
-          "description": "Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.",
+          "title": "Documented Trust Boundaries",
+          "description": "Counts entries in the reference table.",
           "status": "pass",
           "score": 100,
           "weight": 2,
-          "displayValue": "5 boundaries traced",
-          "durationMs": 12,
+          "displayValue": "5 boundaries documented",
+          "durationMs": 0,
           "evidence": [
             "Shared Object Store Cache Write (/ac, /cas) -> ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
             "Trusted Artifact Pointer Publication -> McpServer destination scope check + ObjectStore untrusted-cas isolation",
@@ -260,10 +257,10 @@
       "id": "formal-fuzz",
       "title": "Formal & Fuzz Assurance",
       "shortTitle": "Formal & Fuzz",
-      "score": 98,
-      "rating": "pass",
-      "passedCount": 2,
-      "warnCount": 0,
+      "score": 50,
+      "rating": "average",
+      "passedCount": 0,
+      "warnCount": 2,
       "failCount": 0,
       "audits": [
         {
@@ -271,31 +268,30 @@
           "category": "formal-fuzz",
           "title": "Lean 4 Formal Verification Specs",
           "description": "Machine-checked theorems covering inventory, decomposition, sharding, apply, replay, and observer.",
-          "status": "pass",
-          "score": 100,
+          "status": "warn",
+          "score": 50,
           "weight": 4,
-          "displayValue": "387 theorems / 0 sorry",
-          "durationMs": 95,
+          "displayValue": "Not measured",
+          "durationMs": 0,
           "evidence": [
-            "6 Lean 4.32.0 packages across 51 .lean files",
-            "387 proven theorems with 0 sorry axioms",
-            "~55,685 differential fuzz queries cross-checked against live runtime"
-          ]
+            "No Lean 4 verification results were measured in this audit invocation"
+          ],
+          "remediation": "Run Lean 4 verification and pass observed theorem counts to measure this check."
         },
         {
           "id": "fuzz-property-assurance",
           "category": "formal-fuzz",
           "title": "Adversarial Fuzz & Property Suite",
           "description": "Fuzzes trust attestations, token replay, CAS corruption, XSS escaping, and Home.read bounds.",
-          "status": "pass",
-          "score": 96,
+          "status": "warn",
+          "score": 50,
           "weight": 3,
-          "displayValue": "40+ fuzz suites",
-          "durationMs": 180,
+          "displayValue": "Suite present (not measured)",
+          "durationMs": 0,
           "evidence": [
-            "65 historical bugs uncovered and 55 fixed across core packages/ci fuzz waves",
-            "Local adversarial tests verify zero XSS, zero cache poisoning, and zero token replay"
-          ]
+            "src/security/Adversarial.fuzz.test.ts is present in this checkout, but was not executed in this audit invocation"
+          ],
+          "remediation": "Execute the adversarial fuzz suite and supply measured results."
         }
       ]
     },
@@ -318,7 +314,7 @@
           "score": 100,
           "weight": 4,
           "displayValue": "9 pages / 0 broken",
-          "durationMs": 36,
+          "durationMs": 0,
           "evidence": [
             "9 markdown wiki pages discovered under wiki/",
             "0 broken [[wikilinks]]",
@@ -334,7 +330,7 @@
           "score": 100,
           "weight": 2,
           "displayValue": "9/9 pages",
-          "durationMs": 15,
+          "durationMs": 0,
           "evidence": [
             "9 of 9 wiki pages embed diagrams"
           ]
@@ -347,10 +343,10 @@
           "status": "pass",
           "score": 100,
           "weight": 3,
-          "displayValue": "Linear & verified",
-          "durationMs": 24,
+          "displayValue": "4 epics / 7 commits",
+          "durationMs": 0,
           "evidence": [
-            "history/mythical-history.json verified against deterministic sequencer invariants"
+            "history/mythical-history.json verified (4 epics, 7 commits)"
           ]
         }
       ]
@@ -374,7 +370,7 @@
           "score": 100,
           "weight": 3,
           "displayValue": "3/3 audiences",
-          "durationMs": 11,
+          "durationMs": 0,
           "evidence": [
             ".smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds"
           ]
@@ -383,93 +379,50 @@
           "id": "smithers-cloud-triggers",
           "category": "release-cloud",
           "title": "Smithers Cloud Factory & Flows",
-          "description": ".smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.",
+          "description": ".smithers/factory.json declares factory triggers.",
           "status": "pass",
           "score": 100,
           "weight": 3,
           "displayValue": "7 triggers",
-          "durationMs": 14,
+          "durationMs": 0,
           "evidence": [
-            ".smithers/factory.json declares 7 v1 triggers (push, PR, manual, schedule)"
+            ".smithers/factory.json declares 7 triggers"
           ]
         },
         {
           "id": "github-mirror-release-pipeline",
           "category": "release-cloud",
-          "title": "Auto-Release & Docs Publish on Mirror Merge",
-          "description": "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
+          "title": "Mirror Workflow Inventory",
+          "description": "Inventories workflow files and summarizes static checks.",
           "status": "pass",
           "score": 100,
           "weight": 3,
-          "displayValue": "2 workflows / 4 jobs clean",
-          "durationMs": 14,
+          "displayValue": "2 workflows / 4 jobs, no static findings",
+          "durationMs": 1,
           "evidence": [
             "Inventoried 2 workflows (4 jobs, 20 steps)",
-            ".github/workflows/smithers-mirror-release.yml armed on main",
-            ".github/workflows/untrusted-pr-check.yml isolates fork PRs"
+            ".github/workflows/smithers-mirror-release.yml present",
+            ".github/workflows/untrusted-pr-check.yml present"
           ]
         },
         {
           "id": "cloud-mcp-server",
           "category": "release-cloud",
-          "title": "Authenticated Cloud MCP Server",
-          "description": "Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.",
+          "title": "MCP Server Source File",
+          "description": "Checks for the MCP server source file.",
           "status": "pass",
           "score": 100,
           "weight": 3,
-          "displayValue": "20 tools live",
-          "durationMs": 16,
+          "displayValue": "Module present",
+          "durationMs": 0,
           "evidence": [
-            "Streamable HTTP MCP server exposes 20 tools with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+            "src/mcp/McpServer.ts present"
           ]
         }
       ]
     }
   ],
-  "waterfall": [
-    {
-      "name": "typecheck (tsc --noEmit)",
-      "category": "correctness",
-      "baselineMs": 1840,
-      "cachedMs": 190,
-      "cacheHit": true
-    },
-    {
-      "name": "unit & security suites",
-      "category": "correctness",
-      "baselineMs": 4120,
-      "cachedMs": 680,
-      "cacheHit": true
-    },
-    {
-      "name": "smthrs-observe replay parity",
-      "category": "cache-speed",
-      "baselineMs": 12900,
-      "cachedMs": 2900,
-      "cacheHit": true
-    },
-    {
-      "name": "trust & token adversarial checks",
-      "category": "security-trust",
-      "baselineMs": 920,
-      "cachedMs": 110,
-      "cacheHit": true
-    },
-    {
-      "name": "wiki links & mythical history",
-      "category": "wiki-docs",
-      "baselineMs": 640,
-      "cachedMs": 42,
-      "cacheHit": true
-    },
-    {
-      "name": "home.json & cloud triggers",
-      "category": "release-cloud",
-      "baselineMs": 380,
-      "cachedMs": 28,
-      "cacheHit": true
-    }
-  ],
+  "waterfall": [],
   "securityTraceRows": [
     {
       "privilegedStep": "Shared Object Store Cache Write (/ac, /cas)",
@@ -509,10 +462,10 @@
   ],
   "summary": {
     "totalAudits": 20,
-    "passed": 20,
-    "warnings": 0,
+    "passed": 14,
+    "warnings": 6,
     "failed": 0,
     "releaseThreshold": 90,
-    "releaseReady": true
+    "releaseReady": false
   }
 }

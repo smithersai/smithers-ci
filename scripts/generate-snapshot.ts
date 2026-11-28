@@ -1,7 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { runBackpressureAudit } from "../src/audit/AuditEngine.ts"
+import { createExampleTrustedAuditReport } from "../src/audit/ExampleAudit.ts"
 import { renderLighthouseHtml } from "../src/audit/LighthouseHtml.ts"
+import { resolveCheckoutIdentity } from "../src/cli/CheckoutIdentity.ts"
 import { FactoryState } from "../src/factory/FactoryState.ts"
 import {
   MythicalHistorySequencer,
@@ -12,78 +15,64 @@ import { SharedObjectStore } from "../src/store/ObjectStore.ts"
 import {
   PERSON_ONLY_ACTIONS,
   ROOT_INPUT_TRACING_TABLE,
-  signExecutionClaim,
   verifyExecutionTrust
 } from "../src/trust/ExecutionTrust.ts"
 import { loadWikiGraph } from "../src/wiki/WikiEngine.ts"
 
 const repoRoot = resolve(process.cwd())
-const commitSha = process.env.SMITHERS_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "46412bca49c3a0f1234567890abcdef123456789"
-const secret = "snapshot-ephemeral-signing-secret-0123456789"
+const checkout = resolveCheckoutIdentity(repoRoot)
 const now = new Date()
 const issuedAt = now.toISOString()
 const expiresAt = new Date(now.getTime() + 600_000).toISOString()
 
-const trustedExec = verifyExecutionTrust(
-  signExecutionClaim(
-    {
-      tier: "trusted:sandbox",
-      callerKind: "sandbox",
-      actor: "cfbox-gate-04",
-      repository: "smithersai/smithers-ci",
-      commitSha,
-      sandboxId: "cfbox-gate-04",
-      issuedAt,
-      expiresAt
-    },
-    secret
-  ),
-  { signingSecret: secret }
-)
-
+// Honest local untrusted audit of the actual checkout: no self-signed trust claims
+// and no invented test or typecheck counts.
 const untrustedExec = verifyExecutionTrust(
   {
     tier: "untrusted:community",
     callerKind: "person",
-    actor: "alice-dev",
-    repository: "smithersai/smithers-ci",
-    commitSha: "572c6e21abcd1234567890abcdef1234567890ef",
+    actor: "local-snapshot",
+    repository: checkout.repository,
+    commitSha: checkout.commitSha,
+    sandboxId: null,
     issuedAt,
     expiresAt
   },
-  { signingSecret: secret }
+  { now: () => now }
 )
 
-const trustedAudit = runBackpressureAudit({
-  repoRoot,
-  execution: trustedExec,
-  testResults: { passed: 36, failed: 0, durationMs: 760 },
-  typecheckPassed: true
-})
-
-const untrustedAudit = runBackpressureAudit({
+const audit = runBackpressureAudit({
   repoRoot,
   execution: untrustedExec,
-  testResults: { passed: 36, failed: 0, durationMs: 810 },
-  typecheckPassed: true
+  checkoutState: checkout.dirty === null ? "unknown" : checkout.dirty ? "dirty" : "clean"
 })
 
-const store = new SharedObjectStore({ rootDir: join(repoRoot, ".smithers", "object-store") })
-store.putArtifact("lighthouse-audit.json", JSON.stringify(trustedAudit, null, 2), {
-  contentType: "application/json",
-  visibility: "public",
-  execution: trustedExec
-})
-store.putArtifact("lighthouse-audit.html", renderLighthouseHtml(trustedAudit), {
-  contentType: "text/html; charset=utf-8",
-  visibility: "public",
-  execution: trustedExec
-})
-store.putArtifact("community-preview-audit.json", JSON.stringify(untrustedAudit, null, 2), {
-  contentType: "application/json",
-  visibility: "public",
-  execution: untrustedExec
-})
+// Explicit illustrative example kept strictly separate from live checkout audit evidence.
+const exampleTrustedAudit = createExampleTrustedAuditReport({ repoRoot, now })
+
+const scratchStoreDir = mkdtempSync(join(tmpdir(), "smithers-ci-snapshot-store-"))
+let storeStats: ReturnType<SharedObjectStore["stats"]>
+let artifacts: ReturnType<SharedObjectStore["listArtifacts"]>
+try {
+  const store = new SharedObjectStore({ rootDir: scratchStoreDir })
+  store.putArtifact("lighthouse-audit.json", `${JSON.stringify(audit, null, 2)}\n`, {
+    contentType: "application/json",
+    visibility: "public",
+    execution: untrustedExec
+  })
+  store.putArtifact("lighthouse-audit.html", renderLighthouseHtml(audit), {
+    contentType: "text/html; charset=utf-8",
+    visibility: "public",
+    execution: untrustedExec
+  })
+  storeStats = {
+    ...store.stats(),
+    localRoot: ".smithers/object-store"
+  }
+  artifacts = store.listArtifacts()
+} finally {
+  rmSync(scratchStoreDir, { recursive: true, force: true })
+}
 
 const wiki = loadWikiGraph(join(repoRoot, "wiki"))
 const historySeedPath = join(repoRoot, "history", "mythical-history.json")
@@ -92,21 +81,22 @@ const historySeq = new MythicalHistorySequencer(
     ? (JSON.parse(readFileSync(historySeedPath, "utf8")) as MythicalHistorySnapshot)
     : undefined
 )
-const factory = new FactoryState("smithersai/smithers-ci")
+const factory = new FactoryState(checkout.repository)
 
 const snapshot = {
   generatedAt: now.toISOString(),
-  repository: "smithersai/smithers-ci",
-  commitSha,
+  repository: checkout.repository,
+  commitSha: checkout.commitSha,
   cloudUrl: "https://smithers.sh/smithersai/smithers-ci",
   githubUrl: "https://github.com/smithersai/smithers-ci",
   docsUrl: "https://ci.smithers.sh",
   mcpEndpoint: "https://smithers.sh/smithersai/smithers-ci/mcp",
   objectStoreEndpoint: "https://build.smithers.sh",
-  trustedAudit,
-  untrustedAudit,
-  storeStats: store.stats(),
-  artifacts: store.listArtifacts(),
+  audit,
+  untrustedAudit: audit,
+  exampleTrustedAudit,
+  storeStats,
+  artifacts,
   todos: factory.listTodos(),
   issues: factory.listIssues(),
   pulls: factory.listPulls(),
@@ -125,7 +115,7 @@ mkdirSync(outDir, { recursive: true })
 writeFileSync(
   join(outDir, "generatedSnapshot.ts"),
   [
-    "// Auto-generated by scripts/generate-snapshot.ts from live repository checks.",
+    "// Auto-generated by scripts/generate-snapshot.ts from honest local checkout checks.",
     `import type { BackpressureAuditReport } from "../../../src/audit/AuditEngine.ts"`,
     `import type { ChangesetRecord, FactoryRunRecord, IssueRecord, PullRequestRecord, TodoItem } from "../../../src/factory/FactoryState.ts"`,
     `import type { HistoryExportManifest, MythicalHistorySnapshot } from "../../../src/history/MythicalHistory.ts"`,
@@ -143,8 +133,9 @@ writeFileSync(
     "  readonly docsUrl: string",
     "  readonly mcpEndpoint: string",
     "  readonly objectStoreEndpoint: string",
-    "  readonly trustedAudit: BackpressureAuditReport",
+    "  readonly audit: BackpressureAuditReport",
     "  readonly untrustedAudit: BackpressureAuditReport",
+    "  readonly exampleTrustedAudit: BackpressureAuditReport",
     "  readonly storeStats: StoreStats",
     "  readonly artifacts: ReadonlyArray<ArtifactMetadata>",
     "  readonly todos: ReadonlyArray<TodoItem>",
@@ -166,13 +157,15 @@ writeFileSync(
   "utf8"
 )
 
-// Also write static public audit & llms.txt assets for Vite publicDir
+// Write honest untrusted checkout audit & llms.txt assets for Vite publicDir
 const publicDir = join(repoRoot, "app", "public")
 mkdirSync(publicDir, { recursive: true })
-writeFileSync(join(publicDir, "lighthouse-audit.html"), renderLighthouseHtml(trustedAudit), "utf8")
-writeFileSync(join(publicDir, "lighthouse-audit.json"), `${JSON.stringify(trustedAudit, null, 2)}\n`, "utf8")
+writeFileSync(join(publicDir, "lighthouse-audit.html"), renderLighthouseHtml(audit), "utf8")
+writeFileSync(join(publicDir, "lighthouse-audit.json"), `${JSON.stringify(audit, null, 2)}\n`, "utf8")
 if (existsSync(join(repoRoot, "wiki", "llms.txt"))) {
   writeFileSync(join(publicDir, "llms.txt"), readFileSync(join(repoRoot, "wiki", "llms.txt"), "utf8"), "utf8")
 }
 
-console.log(`Generated Factory UI snapshot: overall ${trustedAudit.overallScore}/100, ${wiki.pages.length} wiki pages, ${historySeq.snapshot().commits.length} mythical commits`)
+console.log(
+  `Generated Factory UI snapshot (${audit.policy.provenanceBadge}): ${checkout.repository} @ ${checkout.commitSha}, overall ${audit.overallScore}/100, ${wiki.pages.length} wiki pages, ${historySeq.snapshot().commits.length} mythical commits`
+)

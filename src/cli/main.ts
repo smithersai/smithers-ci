@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto"
 import { createServer, type Server } from "node:http"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
@@ -20,19 +19,60 @@ import {
 } from "../history/MythicalHistory.ts"
 import { SmithersCloudMcpServer, type JsonRpcRequest } from "../mcp/McpServer.ts"
 import { SharedObjectStore } from "../store/ObjectStore.ts"
+import type { TrustTier } from "../trust/ExecutionTrust.ts"
 import {
-  type TrustTier,
-  signExecutionClaim,
-  verifyExecutionTrust
-} from "../trust/ExecutionTrust.ts"
+  type ExternalTrustReceiptAdapter,
+  resolveCliExecutionTrust
+} from "../trust/TrustReceipt.ts"
 import { generateLlmsTxt, loadWikiGraph } from "../wiki/WikiEngine.ts"
+import { resolveCheckoutIdentity } from "./CheckoutIdentity.ts"
 
-const DEFAULT_SHA = "46412bca49c3a0f1234567890abcdef123456789"
+export interface CliRunOptions {
+  readonly trustReceiptAdapter?: ExternalTrustReceiptAdapter | null
+  readonly env?: NodeJS.ProcessEnv
+  readonly now?: () => Date
+}
+
+type FlagParseResult =
+  | { readonly state: "absent" }
+  | { readonly state: "present"; readonly value: string }
+  | { readonly state: "missing_value" }
+
+function readFlag(argv: ReadonlyArray<string>, name: string): FlagParseResult {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!
+    if (arg === name) {
+      const next = argv[i + 1]
+      if (next === undefined || next.startsWith("--")) {
+        return { state: "missing_value" }
+      }
+      return { state: "present", value: next }
+    }
+    if (arg.startsWith(`${name}=`)) {
+      const val = arg.slice(name.length + 1)
+      if (val.length === 0) return { state: "missing_value" }
+      return { state: "present", value: val }
+    }
+  }
+  return { state: "absent" }
+}
 
 function parseFlag(argv: ReadonlyArray<string>, name: string): string | undefined {
-  const idx = argv.indexOf(name)
-  if (idx === -1) return undefined
-  return argv[idx + 1]
+  const parsed = readFlag(argv, name)
+  return parsed.state === "present" ? parsed.value : undefined
+}
+
+function parseNonNegativeInt(raw: string, flagName: string): number | null {
+  if (!/^\d+$/.test(raw.trim())) {
+    console.error(`Invalid value for ${flagName}: expected a non-negative integer, received "${raw}"`)
+    return null
+  }
+  const value = Number(raw.trim())
+  if (!Number.isSafeInteger(value) || value < 0) {
+    console.error(`Invalid value for ${flagName}: out of range "${raw}"`)
+    return null
+  }
+  return value
 }
 
 function loadHistory(repoRoot: string): MythicalHistorySequencer {
@@ -44,8 +84,13 @@ function loadHistory(repoRoot: string): MythicalHistorySequencer {
   return new MythicalHistorySequencer()
 }
 
-export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): Promise<number> {
+export async function runCli(
+  argv: ReadonlyArray<string>,
+  cwd = process.cwd(),
+  options: CliRunOptions = {}
+): Promise<number> {
   const repoRoot = resolve(cwd)
+  const env = options.env ?? process.env
   const [cmd, sub] = argv
 
   if (!cmd || cmd === "--help" || cmd === "-h") {
@@ -54,57 +99,56 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
         "smithers-ci: Fast kernel-recorded CI, Lighthouse backpressure audits, Cloud MCP, Wiki, and Mythical History",
         "",
         "Commands:",
-        "  smithers-ci audit [--trust <tier>] [--out <dir>]     Run Lighthouse backpressure audit",
-        "  smithers-ci replay [--trust <tier>] [--json]         Run content-addressed incremental replay against shared cache",
-        "  smithers-ci inventory [--json]                       Inventory GitHub workflows and audit PR secret isolation",
+        "  smithers-ci audit [--trust untrusted:community] [--trust-receipt <file>] [--out <dir>]",
+        "                    [--typecheck-passed true|false] [--tests-passed <n>] [--tests-failed <n>]",
+        "                                                     Run Lighthouse backpressure audit (defaults to untrusted:community)",
+        "  smithers-ci replay [--trust untrusted:community] [--trust-receipt <file>] [--json]",
+        "                                                     Run content-addressed incremental replay against shared cache",
+        "  smithers-ci inventory [--json]                     Inventory GitHub workflows and audit PR secret isolation",
         "  smithers-ci auth mint --subject <id> [--tier <tier>] [--scopes <csv>] [--out <file>]",
-        "  smithers-ci wiki check                               Verify Obsidian wiki links and diagrams",
-        "  smithers-ci home check                               Validate .smithers/home.json against Home.read bounds",
-        "  smithers-ci history verify                           Verify Mythical History linear stack and export manifest",
-        "  smithers-ci mcp serve [--port <port>]                Run local Streamable HTTP Cloud MCP server",
-        "  smithers-ci store stats                              Inspect shared object store statistics"
+        "  smithers-ci wiki check                             Verify Obsidian wiki links and diagrams",
+        "  smithers-ci home check                             Validate .smithers/home.json against Home.read bounds",
+        "  smithers-ci history verify                         Verify Mythical History linear stack and export manifest",
+        "  smithers-ci mcp serve [--port <port>]              Run local Streamable HTTP Cloud MCP server",
+        "  smithers-ci store stats                            Inspect shared object store statistics"
       ].join("\n")
     )
     return 0
   }
 
   if (cmd === "replay") {
-    const envSecret = (process.env.SMITHERS_CONTROL_SECRET ?? "").trim()
-    const hasControlSecret = envSecret.length >= 16
-    const requestedTier = (parseFlag(argv, "--trust") ?? (hasControlSecret ? "trusted:sandbox" : "untrusted:community")) as TrustTier
-    const rawSha = (process.env.SMITHERS_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "").trim()
-    const commitSha = /^[0-9a-f]{40}$/i.test(rawSha) ? rawSha.toLowerCase() : DEFAULT_SHA
-    const now = new Date()
-    const issuedAt = now.toISOString()
-    const expiresAt = new Date(now.getTime() + 600_000).toISOString()
-    // Never self-attest trusted cache writes without a real control-plane signing secret.
-    const claim =
-      !hasControlSecret || requestedTier === "untrusted:community"
-        ? {
-            tier: "untrusted:community" as const,
-            callerKind: "person" as const,
-            actor: process.env.USER ?? "community-user",
-            repository: "smithersai/smithers-ci",
-            commitSha,
-            issuedAt,
-            expiresAt
-          }
-        : signExecutionClaim(
-            {
-              tier: requestedTier,
-              callerKind: requestedTier === "trusted:maintainer" ? "person" : "sandbox",
-              actor: requestedTier === "trusted:maintainer" ? "roninjin10" : "cfbox-local",
-              repository: "smithersai/smithers-ci",
-              commitSha,
-              sandboxId: requestedTier === "trusted:sandbox" ? "cfbox-local-01" : null,
-              issuedAt,
-              expiresAt
-            },
-            envSecret
-          )
-    const verified = verifyExecutionTrust(claim, { signingSecret: hasControlSecret ? envSecret : undefined })
+    const trustFlag = readFlag(argv, "--trust")
+    if (trustFlag.state === "missing_value") {
+      console.error("Missing value for --trust")
+      return 2
+    }
+    const receiptFlag = readFlag(argv, "--trust-receipt")
+    if (receiptFlag.state === "missing_value") {
+      console.error("Missing value for --trust-receipt")
+      return 2
+    }
+
+    const checkout = resolveCheckoutIdentity(repoRoot, env)
+    const receiptPath =
+      receiptFlag.state === "present"
+        ? receiptFlag.value
+        : (env.SMITHERS_TRUST_RECEIPT?.trim() || null)
+
+    const trust = await resolveCliExecutionTrust({
+      checkout,
+      requestedTier: trustFlag.state === "present" ? trustFlag.value : null,
+      receiptPath,
+      adapter: options.trustReceiptAdapter ?? null,
+      env,
+      now: options.now
+    })
+    if (!trust.ok) {
+      console.error(trust.message)
+      return 1
+    }
+
     const store = new SharedObjectStore({ rootDir: join(repoRoot, ".smithers", "object-store") })
-    const report = runIncrementalReplay({ repoRoot, store, execution: verified })
+    const report = runIncrementalReplay({ repoRoot, store, execution: trust.execution })
     if (argv.includes("--json")) {
       console.log(JSON.stringify(report, null, 2))
     } else {
@@ -130,88 +174,164 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
   }
 
   if (cmd === "audit") {
-    const requestedTier = (parseFlag(argv, "--trust") ?? "trusted:sandbox") as TrustTier
-    const outDir = resolve(repoRoot, parseFlag(argv, "--out") ?? ".smithers/reports")
-    const rawSha = (process.env.SMITHERS_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "").trim()
-    const commitSha = /^[0-9a-f]{40}$/i.test(rawSha) ? rawSha.toLowerCase() : DEFAULT_SHA
-    const envSecret = (process.env.SMITHERS_CONTROL_SECRET ?? "").trim()
-    const secret = envSecret.length >= 16 ? envSecret : randomBytes(24).toString("hex")
-    const now = new Date()
-    const issuedAt = now.toISOString()
-    const expiresAt = new Date(now.getTime() + 600_000).toISOString()
+    const trustFlag = readFlag(argv, "--trust")
+    if (trustFlag.state === "missing_value") {
+      console.error("Missing value for --trust")
+      return 2
+    }
+    const receiptFlag = readFlag(argv, "--trust-receipt")
+    if (receiptFlag.state === "missing_value") {
+      console.error("Missing value for --trust-receipt")
+      return 2
+    }
+    const outFlag = readFlag(argv, "--out")
+    if (outFlag.state === "missing_value") {
+      console.error("Missing value for --out")
+      return 2
+    }
+    const typecheckPassedFlag = readFlag(argv, "--typecheck-passed")
+    if (typecheckPassedFlag.state === "missing_value") {
+      console.error("Missing value for --typecheck-passed")
+      return 2
+    }
+    const typecheckDurationFlag = readFlag(argv, "--typecheck-duration-ms")
+    if (typecheckDurationFlag.state === "missing_value") {
+      console.error("Missing value for --typecheck-duration-ms")
+      return 2
+    }
+    const testsPassedFlag = readFlag(argv, "--tests-passed")
+    if (testsPassedFlag.state === "missing_value") {
+      console.error("Missing value for --tests-passed")
+      return 2
+    }
+    const testsFailedFlag = readFlag(argv, "--tests-failed")
+    if (testsFailedFlag.state === "missing_value") {
+      console.error("Missing value for --tests-failed")
+      return 2
+    }
+    const testsDurationFlag = readFlag(argv, "--tests-duration-ms")
+    if (testsDurationFlag.state === "missing_value") {
+      console.error("Missing value for --tests-duration-ms")
+      return 2
+    }
 
-    const claim =
-      requestedTier === "untrusted:community"
-        ? {
-            tier: "untrusted:community" as const,
-            callerKind: "person" as const,
-            actor: process.env.USER ?? "community-user",
-            repository: "smithersai/smithers-ci",
-            commitSha,
-            issuedAt,
-            expiresAt
-          }
-        : signExecutionClaim(
-            {
-              tier: requestedTier,
-              callerKind: requestedTier === "trusted:maintainer" ? "person" : "sandbox",
-              actor: requestedTier === "trusted:maintainer" ? "roninjin10" : "cfbox-local",
-              repository: "smithersai/smithers-ci",
-              commitSha,
-              sandboxId: requestedTier === "trusted:sandbox" ? "cfbox-local-01" : null,
-              issuedAt,
-              expiresAt
-            },
-            secret
-          )
+    const forceUnmeasured = argv.includes("--unmeasured")
+    let typecheckPassed: boolean | undefined
+    if (!forceUnmeasured && typecheckPassedFlag.state === "present") {
+      if (typecheckPassedFlag.value === "true") {
+        typecheckPassed = true
+      } else if (typecheckPassedFlag.value === "false") {
+        typecheckPassed = false
+      } else {
+        console.error(
+          `Invalid value for --typecheck-passed: expected "true" or "false", received "${typecheckPassedFlag.value}"`
+        )
+        return 2
+      }
+    }
 
-    const verified = verifyExecutionTrust(claim, { signingSecret: secret })
-    const typecheckPassedFlag = parseFlag(argv, "--typecheck-passed")
-    const testsPassedFlag = parseFlag(argv, "--tests-passed")
-    const testsFailedFlag = parseFlag(argv, "--tests-failed")
-    const typecheckPassed =
-      typecheckPassedFlag === "false"
-        ? false
-        : typecheckPassedFlag === "true" || !argv.includes("--unmeasured")
-          ? true
-          : undefined
-    const testResults =
-      testsPassedFlag !== undefined
-        ? {
-            passed: Math.max(0, Number(testsPassedFlag) || 0),
-            failed: Math.max(0, Number(testsFailedFlag ?? "0") || 0),
-            durationMs: 420
-          }
-        : undefined
+    let typecheckDurationMs: number | undefined
+    if (!forceUnmeasured && typecheckDurationFlag.state === "present") {
+      const parsed = parseNonNegativeInt(typecheckDurationFlag.value, "--typecheck-duration-ms")
+      if (parsed === null) return 2
+      typecheckDurationMs = parsed
+    }
+
+    let testResults: { readonly passed: number; readonly failed: number; readonly durationMs: number } | undefined
+    if (!forceUnmeasured && (testsPassedFlag.state === "present" || testsFailedFlag.state === "present")) {
+      const passed =
+        testsPassedFlag.state === "present"
+          ? parseNonNegativeInt(testsPassedFlag.value, "--tests-passed")
+          : 0
+      if (passed === null) return 2
+      const failed =
+        testsFailedFlag.state === "present"
+          ? parseNonNegativeInt(testsFailedFlag.value, "--tests-failed")
+          : 0
+      if (failed === null) return 2
+      if (testsPassedFlag.state !== "present" || testsFailedFlag.state !== "present") {
+        console.error("Supply both --tests-passed and --tests-failed.")
+        return 2
+      }
+      const durationMs =
+        testsDurationFlag.state === "present"
+          ? parseNonNegativeInt(testsDurationFlag.value, "--tests-duration-ms")
+          : 0
+      if (durationMs === null) return 2
+      testResults = { passed, failed, durationMs }
+    }
+
+    const checkout = resolveCheckoutIdentity(repoRoot, env)
+    const receiptPath =
+      receiptFlag.state === "present"
+        ? receiptFlag.value
+        : (env.SMITHERS_TRUST_RECEIPT?.trim() || null)
+
+    const trust = await resolveCliExecutionTrust({
+      checkout,
+      requestedTier: trustFlag.state === "present" ? trustFlag.value : null,
+      receiptPath,
+      adapter: options.trustReceiptAdapter ?? null,
+      env,
+      now: options.now
+    })
+    if (!trust.ok) {
+      console.error(trust.message)
+      return 1
+    }
+
+    if (checkout.envCommitMismatch) {
+      console.error(
+        `Warning: environment commit SHA (${checkout.envCommitMismatch}) disagrees with checkout commit (${checkout.commitSha}); using actual checkout identity.`
+      )
+    }
+
+    const outDir = resolve(repoRoot, outFlag.state === "present" ? outFlag.value : ".smithers/reports")
     const report = runBackpressureAudit({
       repoRoot,
-      execution: verified,
+      execution: trust.execution,
+      callerReportedChecks: true,
+      checkoutState: checkout.dirty === null ? "unknown" : checkout.dirty ? "dirty" : "clean",
       typecheckPassed,
+      typecheckDurationMs,
       testResults
     })
+
+    const jsonBody = `${JSON.stringify(report, null, 2)}\n`
+    const htmlBody = renderLighthouseHtml(report)
 
     mkdirSync(outDir, { recursive: true })
     const jsonPath = join(outDir, "lighthouse-audit.json")
     const htmlPath = join(outDir, "lighthouse-audit.html")
-    writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`, "utf8")
-    writeFileSync(htmlPath, renderLighthouseHtml(report), "utf8")
+    writeFileSync(jsonPath, jsonBody, "utf8")
+    writeFileSync(htmlPath, htmlBody, "utf8")
 
     const store = new SharedObjectStore({ rootDir: join(repoRoot, ".smithers", "object-store") })
-    const jsonArtifact = store.putArtifact("lighthouse-audit.json", JSON.stringify(report, null, 2), {
+    const jsonArtifact = store.putArtifact("lighthouse-audit.json", jsonBody, {
       contentType: "application/json",
       visibility: "public",
-      execution: verified
+      execution: trust.execution
     })
-    const htmlArtifact = store.putArtifact("lighthouse-audit.html", renderLighthouseHtml(report), {
+    const htmlArtifact = store.putArtifact("lighthouse-audit.html", htmlBody, {
       contentType: "text/html; charset=utf-8",
       visibility: "public",
-      execution: verified
+      execution: trust.execution
     })
 
     console.log(`Smithers CI Backpressure Audit (${report.policy.provenanceBadge})`)
+    console.log(`Checkout: ${report.repository} @ ${report.commitSha} (${checkout.commitSource}, ${checkout.dirty === null ? "cleanliness unknown" : checkout.dirty ? "dirty" : "clean"})`)
+    console.log(
+      `Provenance: ${report.execution.effectiveTier} (${
+        trust.elevated
+          ? `verified via ${trust.adapterId}`
+          : "local/untrusted; no external trust receipt verified"
+      })`
+    )
     console.log(`Overall Score: ${report.overallScore}/100 (${report.overallRating.toUpperCase()})`)
     for (const cat of report.categories) {
-      console.log(`  - ${cat.title}: ${cat.score}/100 (${cat.passedCount} pass, ${cat.warnCount} warn, ${cat.failCount} fail)`)
+      console.log(
+        `  - ${cat.title}: ${cat.score}/100 (${cat.passedCount} pass, ${cat.warnCount} warn, ${cat.failCount} fail)`
+      )
     }
     console.log(`Gate: ${report.gate.status} (${report.gate.satisfied ? "SATISFIED" : "NOT SATISFIED"})`)
     console.log(`Artifacts stored: ${jsonArtifact.key}, ${htmlArtifact.key}`)
@@ -252,7 +372,9 @@ export async function runCli(argv: ReadonlyArray<string>, cwd = process.cwd()): 
 
   if (cmd === "wiki" && sub === "check") {
     const graph = loadWikiGraph(join(repoRoot, "wiki"))
-    console.log(`Wiki pages: ${graph.pages.length}, broken links: ${graph.brokenLinks.length}, missing diagrams: ${graph.pagesWithoutDiagrams.length}`)
+    console.log(
+      `Wiki pages: ${graph.pages.length}, broken links: ${graph.brokenLinks.length}, missing diagrams: ${graph.pagesWithoutDiagrams.length}`
+    )
     if (graph.brokenLinks.length > 0) {
       for (const b of graph.brokenLinks) {
         console.error(`  BROKEN: ${b.from} -> [[${b.target}]]`)
@@ -363,6 +485,8 @@ export async function startLocalMcpHttpServer(options: {
   readonly close: () => Promise<void>
 }> {
   const requestedPort = options.port ?? 0
+  const checkout = resolveCheckoutIdentity(options.repoRoot)
+  const commitSha = options.commitSha ?? checkout.commitSha
   const store = new SharedObjectStore({ rootDir: join(options.repoRoot, ".smithers", "object-store") })
   const factory = new FactoryState("smithersai/smithers-ci")
   const history = loadHistory(options.repoRoot)
@@ -372,7 +496,7 @@ export async function startLocalMcpHttpServer(options: {
     repoRoot: options.repoRoot,
     repository: "smithersai/smithers-ci",
     baseUrl: `http://127.0.0.1:${requestedPort}`,
-    commitSha: options.commitSha ?? DEFAULT_SHA,
+    commitSha,
     store,
     tokens,
     factory,
@@ -485,7 +609,7 @@ export async function startLocalMcpHttpServer(options: {
         repoRoot: options.repoRoot,
         repository: "smithersai/smithers-ci",
         baseUrl,
-        commitSha: options.commitSha ?? DEFAULT_SHA,
+        commitSha,
         store,
         tokens,
         factory,

@@ -6,9 +6,35 @@ describe("Cloudflare Worker + FactoryHubDO (Factory UI + Live Cloud MCP + One-Ti
   it("serves health, OAuth 2.1 discovery, public MCP tools, and blocks person-only actions", async () => {
     const health = await worker.fetch(new Request("https://smithers.sh/api/health"), {})
     expect(health.status).toBe(200)
-    const healthJson = (await health.json()) as { ok: boolean; lighthouseScore: number }
+    const healthJson = (await health.json()) as {
+      ok: boolean
+      lighthouseScore: number
+      auditProvenance: string
+      gateSatisfied: boolean
+    }
     expect(healthJson.ok).toBe(true)
-    expect(healthJson.lighthouseScore).toBeGreaterThanOrEqual(90)
+    expect(healthJson.lighthouseScore).toBeGreaterThanOrEqual(0)
+    expect(healthJson.lighthouseScore).toBeLessThanOrEqual(100)
+    expect(healthJson.auditProvenance).toBe("UNTRUSTED COMMUNITY")
+    expect(healthJson.gateSatisfied).toBe(false)
+
+    const auditRes = await worker.fetch(new Request("https://smithers.sh/api/audit.json"), {})
+    expect(auditRes.status).toBe(200)
+    const auditJson = (await auditRes.json()) as {
+      execution: { trusted: boolean; effectiveTier: string }
+      policy: { provenanceBadge: string }
+      gate: { satisfied: boolean; status: string }
+    }
+    expect(auditJson.execution.trusted).toBe(false)
+    expect(auditJson.execution.effectiveTier).toBe("untrusted:community")
+    expect(auditJson.policy.provenanceBadge).toBe("UNTRUSTED COMMUNITY")
+    expect(auditJson.gate.satisfied).toBe(false)
+    expect(auditJson.gate.status).toBe("untrusted_preview")
+
+    const exampleRes = await worker.fetch(new Request("https://smithers.sh/api/audit-example.json"), {})
+    expect(exampleRes.status).toBe(200)
+    const exampleJson = (await exampleRes.json()) as { isExample?: boolean }
+    expect(exampleJson.isExample).toBe(true)
 
     const oauth = await worker.fetch(
       new Request("https://smithers.sh/.well-known/oauth-authorization-server"),

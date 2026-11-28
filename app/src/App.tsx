@@ -83,7 +83,7 @@ export function App() {
     }
   }
 
-  const auditScore = FACTORY_SNAPSHOT.trustedAudit.overallScore
+  const auditScore = FACTORY_SNAPSHOT.audit.overallScore
 
   return (
     <div className="app-shell">
@@ -99,7 +99,7 @@ export function App() {
                 <span className="dim">smithersai /</span>
                 <strong>smithers-ci</strong>
               </div>
-              <span className="pill pill-pass">Lighthouse {auditScore}/100</span>
+              <span className={`pill ${FACTORY_SNAPSHOT.audit.gate.satisfied ? "pill-pass" : "pill-warn"}`}>Audit {auditScore}/100 ({FACTORY_SNAPSHOT.audit.policy.provenanceBadge})</span>
               <a
                 className="pill"
                 href={FACTORY_SNAPSHOT.githubUrl}

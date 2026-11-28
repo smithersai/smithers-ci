@@ -7,11 +7,14 @@ interface LighthouseAuditViewProps {
 }
 
 export function LighthouseAuditView({ snapshot }: LighthouseAuditViewProps) {
-  const [provenanceMode, setProvenanceMode] = useState<"trusted" | "untrusted">("trusted")
+  const [provenanceMode, setProvenanceMode] = useState<"actual" | "example">("actual")
   const [statusFilter, setStatusFilter] = useState<"all" | "pass" | "warn" | "fail">("all")
   const [openAudits, setOpenAudits] = useState<Record<string, boolean>>({})
 
-  const report = provenanceMode === "trusted" ? snapshot.trustedAudit : snapshot.untrustedAudit
+  const report = provenanceMode === "actual" ? snapshot.audit : snapshot.exampleTrustedAudit
+  const isExample = report.isExample === true
+  const isTrustedLive = !isExample && report.execution.trusted
+  const displaySha = /^[0-9a-f]{40}$/i.test(report.commitSha) ? report.commitSha.slice(0, 12) : report.commitSha
   const maxBase = Math.max(...report.waterfall.map((w) => w.baselineMs), 1)
 
   const toggleAudit = (id: string) => {
@@ -25,16 +28,16 @@ export function LighthouseAuditView({ snapshot }: LighthouseAuditViewProps) {
         className="card"
         style={{
           marginBottom: "1.15rem",
-          borderColor:
-            provenanceMode === "trusted"
-              ? "color-mix(in srgb, var(--lh-pass) 45%, var(--line))"
-              : "color-mix(in srgb, var(--lh-avg) 48%, var(--line))"
+          borderColor: isTrustedLive
+            ? "color-mix(in srgb, var(--lh-pass) 45%, var(--line))"
+            : "color-mix(in srgb, var(--lh-avg) 48%, var(--line))"
         }}
       >
         <div className="card-head" style={{ marginBottom: "0.5rem" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-              <span className={`pill ${provenanceMode === "trusted" ? "pill-pass" : "pill-warn"}`}>
+              {isExample ? <span className="pill pill-warn">ILLUSTRATIVE EXAMPLE</span> : null}
+              <span className={`pill ${isTrustedLive ? "pill-pass" : "pill-warn"}`}>
                 {report.policy.provenanceBadge}
               </span>
               <span className="pill">
@@ -45,22 +48,24 @@ export function LighthouseAuditView({ snapshot }: LighthouseAuditViewProps) {
               </span>
             </div>
             <p className="card-sub" style={{ marginTop: "0.45rem" }}>
-              {report.gate.reason}
+              {isExample
+                ? "Synthetic example showing how an externally verified trusted sandbox report looks. Not live checkout evidence."
+                : report.gate.reason}
             </p>
           </div>
           <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
             <div className="role-switcher">
               <button
-                className={`role-btn ${provenanceMode === "trusted" ? "active" : ""}`}
-                onClick={() => setProvenanceMode("trusted")}
+                className={`role-btn ${provenanceMode === "actual" ? "active" : ""}`}
+                onClick={() => setProvenanceMode("actual")}
               >
-                Trusted Sandbox
+                Checkout Audit (Untrusted)
               </button>
               <button
-                className={`role-btn ${provenanceMode === "untrusted" ? "active" : ""}`}
-                onClick={() => setProvenanceMode("untrusted")}
+                className={`role-btn ${provenanceMode === "example" ? "active" : ""}`}
+                onClick={() => setProvenanceMode("example")}
               >
-                Untrusted Community
+                Example Trusted Report
               </button>
             </div>
             <a className="btn btn-sm" href="/lighthouse-audit.html" target="_blank" rel="noreferrer">
@@ -91,7 +96,7 @@ export function LighthouseAuditView({ snapshot }: LighthouseAuditViewProps) {
                 Lighthouse Backpressure Audit Report
               </h2>
               <p className="card-sub">
-                {report.repository} @ <code>{report.commitSha.slice(0, 12)}</code> · Actor:{" "}
+                {report.repository} @ <code>{displaySha}</code> · Actor:{" "}
                 <code>{report.execution.actor}</code>
               </p>
               <p className="card-sub">
@@ -209,10 +214,14 @@ export function LighthouseAuditView({ snapshot }: LighthouseAuditViewProps) {
               Baseline cold execution vs shared Smithers Cloud object store (<code>{snapshot.objectStoreEndpoint}</code>)
             </p>
           </div>
-          <span className={`pill ${provenanceMode === "trusted" ? "pill-pass" : "pill-warn"}`}>
-            {provenanceMode === "trusted"
-              ? "Trusted R/W warm cache hits"
-              : "Untrusted read-only warm hits (cache writes blocked)"}
+          <span className={`pill ${isTrustedLive ? "pill-pass" : "pill-warn"}`}>
+            {isExample
+              ? "Illustrative example timings"
+              : report.waterfall.length === 0
+                ? "Not measured in this audit"
+                : isTrustedLive
+                  ? "Trusted R/W warm cache hits"
+                  : "Untrusted read-only warm hits (cache writes blocked)"}
           </span>
         </div>
         <div className="table-wrap">
@@ -227,7 +236,13 @@ export function LighthouseAuditView({ snapshot }: LighthouseAuditViewProps) {
               </tr>
             </thead>
             <tbody>
-              {report.waterfall.map((step) => {
+              {report.waterfall.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ color: "var(--muted)" }}>
+                    No timing waterfall measurements were recorded for this audit run.
+                  </td>
+                </tr>
+              ) : report.waterfall.map((step) => {
                 const basePct = (step.baselineMs / maxBase) * 100
                 const cachePct = (step.cachedMs / maxBase) * 100
                 const ratio = (step.baselineMs / Math.max(step.cachedMs, 1)).toFixed(1)

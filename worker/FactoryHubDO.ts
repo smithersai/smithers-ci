@@ -1086,7 +1086,7 @@ export class FactoryHubDO {
           break
         }
         case "audit_run":
-          output = { report: trusted ? FACTORY_SNAPSHOT.trustedAudit : FACTORY_SNAPSHOT.untrustedAudit }
+          output = { report: FACTORY_SNAPSHOT.untrustedAudit }
           break
         case "wiki_search": {
           const q = typeof args.query === "string" ? args.query.trim().toLowerCase() : ""
