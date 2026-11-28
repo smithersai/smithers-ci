@@ -129,12 +129,18 @@ export async function resolveCliExecutionTrust(options: {
     }
   }
 
-  if (options.checkout.dirty === true) {
+  if (options.checkout.dirty !== false) {
     return {
       ok: false,
       code: "dirty_checkout",
-      message: "Refusing elevated provenance: working copy has uncommitted local changes."
+      message: options.checkout.dirty === true
+        ? "Refusing elevated provenance: working copy has uncommitted local changes."
+        : "Refusing elevated provenance: working copy cleanliness could not be verified."
     }
+  }
+
+  if (options.checkout.repositorySource !== "jj-remote" && options.checkout.repositorySource !== "git-config") {
+    return { ok: false, code: "identity_mismatch", message: "Refusing elevated provenance: checkout has no repository remote." }
   }
 
   if (options.checkout.envCommitMismatch !== null) {

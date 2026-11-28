@@ -249,6 +249,10 @@ export async function runCli(
           ? parseNonNegativeInt(testsFailedFlag.value, "--tests-failed")
           : 0
       if (failed === null) return 2
+      if (testsPassedFlag.state !== "present" || testsFailedFlag.state !== "present") {
+        console.error("Supply both --tests-passed and --tests-failed.")
+        return 2
+      }
       const durationMs =
         testsDurationFlag.state === "present"
           ? parseNonNegativeInt(testsDurationFlag.value, "--tests-duration-ms")
@@ -286,6 +290,8 @@ export async function runCli(
     const report = runBackpressureAudit({
       repoRoot,
       execution: trust.execution,
+      callerReportedChecks: true,
+      checkoutState: checkout.dirty === null ? "unknown" : checkout.dirty ? "dirty" : "clean",
       typecheckPassed,
       typecheckDurationMs,
       testResults
@@ -313,7 +319,7 @@ export async function runCli(
     })
 
     console.log(`Smithers CI Backpressure Audit (${report.policy.provenanceBadge})`)
-    console.log(`Checkout: ${report.repository} @ ${report.commitSha} (${checkout.commitSource})`)
+    console.log(`Checkout: ${report.repository} @ ${report.commitSha} (${checkout.commitSource}, ${checkout.dirty === null ? "cleanliness unknown" : checkout.dirty ? "dirty" : "clean"})`)
     console.log(
       `Provenance: ${report.execution.effectiveTier} (${
         trust.elevated

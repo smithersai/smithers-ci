@@ -255,7 +255,6 @@ function resolveJjCommit(
       [
         "log",
         "--no-graph",
-        "--ignore-working-copy",
         "-R",
         jjRoot,
         "-r",
@@ -385,8 +384,10 @@ export function resolveCheckoutIdentity(
   env: NodeJS.ProcessEnv = process.env
 ): CheckoutIdentity {
   const resolvedRoot = resolve(repoRoot)
-  const jjRoot = findAncestorWith(resolvedRoot, ".jj")
-  const gitRoot = findAncestorWith(resolvedRoot, ".git")
+  const nearestJj = findAncestorWith(resolvedRoot, ".jj")
+  const nearestGit = findAncestorWith(resolvedRoot, ".git")
+  const jjRoot = nearestJj && (!nearestGit || nearestJj.length >= nearestGit.length) ? nearestJj : null
+  const gitRoot = nearestGit && (!nearestJj || nearestGit.length >= nearestJj.length) ? nearestGit : null
 
   const envShaRaw = (env.SMITHERS_COMMIT_SHA ?? env.GITHUB_SHA ?? "").trim()
   const envSha = SHA40_RE.test(envShaRaw) ? envShaRaw.toLowerCase() : null

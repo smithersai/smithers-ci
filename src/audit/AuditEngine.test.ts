@@ -124,7 +124,7 @@ describe("Backpressure Audit Engine & Lighthouse HTML", () => {
     expect(noTests.gate.satisfied).toBe(false)
     expect(noTests.summary.releaseReady).toBe(false)
 
-    const measured = runBackpressureAudit({
+    const observations = {
       repoRoot: process.cwd(),
       execution: verified,
       typecheckPassed: true,
@@ -132,7 +132,11 @@ describe("Backpressure Audit Engine & Lighthouse HTML", () => {
       replayResults: { targets: 9, mismatches: 0, cacheHits: 9, speedupFactor: 4.0, durationMs: 500 },
       formalResults: { theorems: 10, sorryCount: 0, durationMs: 50 },
       fuzzResults: { suites: 1, passed: 7, failed: 0, durationMs: 120 }
-    })
+    }
+    const measured = runBackpressureAudit(observations)
+    const callerReport = runBackpressureAudit({ ...observations, callerReportedChecks: true })
+    expect(callerReport.gate.satisfied).toBe(false)
+    expect(callerReport.summary.releaseReady).toBe(false)
     expect(measured.overallScore).toBeGreaterThanOrEqual(90)
     expect(measured.gate.satisfied).toBe(true)
     expect(measured.gate.status).toBe("passed")

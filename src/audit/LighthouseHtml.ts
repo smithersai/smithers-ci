@@ -294,7 +294,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <div class="topbar">
       <h1>Smithers CI Backpressure Audit Report</h1>
       <div class="topbar-right">
-        <div class="meta">${escapeHtml(report.repository)} @ ${escapeHtml(shortSha)} · ${escapeHtml(report.generatedAt)}</div>
+        <div class="meta">${escapeHtml(report.repository)} @ ${escapeHtml(shortSha)}${report.checkoutState ? ` · Checkout ${escapeHtml(report.checkoutState)}` : ""} · ${escapeHtml(report.generatedAt)}</div>
         <label class="theme-toggle" for="lh-light-mode">Toggle Light / Dark</label>
       </div>
     </div>

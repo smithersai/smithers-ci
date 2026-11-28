@@ -62,6 +62,7 @@ export interface BackpressureAuditReport {
   readonly generatedAt: string
   readonly repository: string
   readonly commitSha: string
+  readonly checkoutState?: "clean" | "dirty" | "unknown"
   readonly isExample?: boolean
   readonly execution: VerifiedExecution
   readonly policy: ReturnType<typeof evaluateExecutionPolicy>
@@ -102,7 +103,7 @@ const CATEGORY_META: ReadonlyArray<{
 }> = [
   { id: "correctness", title: "Correctness & Determinism", shortTitle: "Correctness" },
   { id: "cache-speed", title: "Cache & Speed", shortTitle: "Cache & Speed" },
-  { id: "security-trust", title: "Security & Trust Isolation", shortTitle: "Security" },
+  { id: "security-trust", title: "Trust Source Inventory & Execution Policy", shortTitle: "Trust inventory" },
   { id: "formal-fuzz", title: "Formal & Fuzz Assurance", shortTitle: "Formal & Fuzz" },
   { id: "wiki-docs", title: "Wiki & Docs Freshness", shortTitle: "Wiki & Docs" },
   { id: "release-cloud", title: "Release & Cloud Readiness", shortTitle: "Cloud Release" }
@@ -111,6 +112,8 @@ const CATEGORY_META: ReadonlyArray<{
 export interface AuditRunOptions {
   readonly repoRoot: string
   readonly execution: VerifiedExecution
+  readonly checkoutState?: BackpressureAuditReport["checkoutState"]
+  readonly callerReportedChecks?: boolean
   readonly testResults?: {
     readonly passed: number
     readonly failed: number
@@ -302,9 +305,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
         : "No tsconfig.json found in checkout root",
       !typecheckMeasured
         ? "Typecheck was not executed in this audit invocation; run `bun run typecheck` and supply explicit measured status to clear this check"
-        : typecheckOk
-          ? "Measured typecheck status: passed"
-          : "Measured typecheck status: failed"
+        : `${options.callerReportedChecks ? "Caller-reported" : "Measured"} typecheck status: ${typecheckOk ? "passed" : "failed"}`
     ],
     remediation: typecheckMeasured && typecheckOk ? undefined : "Run `bun run typecheck` and pass the observed result."
   })
@@ -332,7 +333,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     durationMs: hasTestResults ? Math.max(0, Math.round(options.testResults?.durationMs ?? 0)) : 0,
     evidence: [
       testsMeasured
-        ? `Observed ${testsPassed} passing and ${testsFailed} failing tests`
+        ? `${options.callerReportedChecks ? "Caller reported" : "Observed"} ${testsPassed} passing and ${testsFailed} failing tests`
         : "No test results were supplied to this audit invocation; run `bun run test` and supply observed counts to satisfy this check"
     ],
     remediation: testsOk ? undefined : "Run `bun run test` and pass the observed test counts."
@@ -473,25 +474,24 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   audits.push({
     id: "untrusted-cache-isolation",
     category: "security-trust",
-    title: "Untrusted Cache-Poisoning Immunity",
-    description: "Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.",
+    title: "Cache Isolation Source Files",
+    description: "Checks for the trust and object-store source files.",
     status: trustModuleExists && storeModuleExists ? "pass" : "fail",
     score: trustModuleExists && storeModuleExists ? 100 : 0,
     weight: 4,
-    displayValue: trustModuleExists && storeModuleExists ? "Hard isolated" : "Modules missing",
+    displayValue: trustModuleExists && storeModuleExists ? "Modules present" : "Modules missing",
     durationMs: securityFiles.durationMs,
     evidence: [
-      "ExecutionTrust enforces allowCacheWrite: false for untrusted:community",
-      "SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers",
-      "Untrusted artifacts isolate under untrusted/<actor>/<sha>/"
+      `Trust source file: ${trustModuleExists ? "present" : "missing"}`,
+      `Object store source file: ${storeModuleExists ? "present" : "missing"}`
     ]
   })
 
   audits.push({
     id: "untrusted-gate-non-bypass",
     category: "security-trust",
-    title: "Trusted-Only Merge & Release Gates",
-    description: "Only externally verified controlled Smithers sandboxes or maintainers can clear backpressure gates.",
+    title: "Current Execution Policy",
+    description: "Reports gate eligibility for this execution.",
     status: trustModuleExists ? "pass" : "fail",
     score: trustModuleExists ? 100 : 0,
     weight: 4,
@@ -509,29 +509,27 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   audits.push({
     id: "one-time-sandbox-auth",
     category: "security-trust",
-    title: "One-Time-Use Sandbox & Agent Auth",
-    description: "Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.",
+    title: "Token Implementation File",
+    description: "Checks for the one-time token source file.",
     status: tokenModuleExists ? "pass" : "fail",
     score: tokenModuleExists ? 100 : 0,
     weight: 3,
-    displayValue: tokenModuleExists ? "Single-use + PKCE" : "Module missing",
+    displayValue: tokenModuleExists ? "Module present" : "Module missing",
     durationMs: 0,
     evidence: [
-      "Raw tokens burn atomically on first redemption (already_redeemed on replay)",
-      "Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime",
-      "Mode-600 file output with symlink and permission checks"
+      tokenModuleExists ? "src/auth/OneTimeToken.ts present" : "Missing src/auth/OneTimeToken.ts"
     ]
   })
 
   audits.push({
     id: "root-input-tracing",
     category: "security-trust",
-    title: "Root-Input-Tracing Security Coverage",
-    description: "Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.",
+    title: "Documented Trust Boundaries",
+    description: "Counts entries in the reference table.",
     status: "pass",
     score: 100,
     weight: 2,
-    displayValue: `${ROOT_INPUT_TRACING_TABLE.length} boundaries traced`,
+    displayValue: `${ROOT_INPUT_TRACING_TABLE.length} boundaries documented`,
     durationMs: 0,
     evidence: ROOT_INPUT_TRACING_TABLE.map((row) => `${row.privilegedStep} -> ${row.trustBoundary}`)
   })
@@ -717,7 +715,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     id: "smithers-cloud-triggers",
     category: "release-cloud",
     title: "Smithers Cloud Factory & Flows",
-    description: ".smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.",
+    description: ".smithers/factory.json declares factory triggers.",
     status: factoryTriggers >= 2 ? "pass" : "fail",
     score: factoryTriggers >= 2 ? 100 : 0,
     weight: 3,
@@ -725,7 +723,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     durationMs: factoryMeasured.durationMs,
     evidence: [
       factoryTriggers >= 2
-        ? `.smithers/factory.json declares ${factoryTriggers} v1 triggers (push, PR, manual, schedule)`
+        ? `.smithers/factory.json declares ${factoryTriggers} triggers`
         : "Missing v1 triggers in .smithers/factory.json"
     ]
   })
@@ -742,19 +740,19 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   audits.push({
     id: "github-mirror-release-pipeline",
     category: "release-cloud",
-    title: "Auto-Release & Docs Publish on Mirror Merge",
-    description: "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
+    title: "Mirror Workflow Inventory",
+    description: "Inventories workflow files and summarizes static checks.",
     status: workflowsHealthy ? "pass" : "fail",
     score: workflowsHealthy ? 100 : 20,
     weight: 3,
     displayValue: workflowsHealthy
-      ? `${wfInventory.workflows.length} workflows / ${wfInventory.totalJobs} jobs clean`
+      ? `${wfInventory.workflows.length} workflows / ${wfInventory.totalJobs} jobs, no static findings`
       : `${wfInventory.totalSecurityFindings} findings`,
     durationMs: wfMeasured.durationMs,
     evidence: [
       `Inventoried ${wfInventory.workflows.length} workflows (${wfInventory.totalJobs} jobs, ${wfInventory.totalSteps} steps)`,
       mirrorReleaseExists ? ".github/workflows/smithers-mirror-release.yml present" : "Missing mirror release workflow",
-      untrustedPrExists ? ".github/workflows/untrusted-pr-check.yml isolates fork PRs" : "Missing untrusted PR workflow",
+      untrustedPrExists ? ".github/workflows/untrusted-pr-check.yml present" : "Missing untrusted PR workflow",
       ...wfInventory.workflows.flatMap((w) => w.securityFindings)
     ]
   })
@@ -764,8 +762,8 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   audits.push({
     id: "cloud-mcp-server",
     category: "release-cloud",
-    title: "Authenticated Cloud MCP Server",
-    description: "Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.",
+    title: "MCP Server Source File",
+    description: "Checks for the MCP server source file.",
     status: mcpExists ? "pass" : "fail",
     score: mcpExists ? 100 : 0,
     weight: 3,
@@ -773,7 +771,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     durationMs: mcpMeasured.durationMs,
     evidence: [
       mcpExists
-        ? "src/mcp/McpServer.ts present with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+        ? "src/mcp/McpServer.ts present"
         : "Missing src/mcp/McpServer.ts"
     ]
   })
@@ -802,6 +800,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   const passed = audits.filter((a) => a.status === "pass").length
 
   const checksPassed =
+    !options.callerReportedChecks &&
     overallScore >= releaseThreshold &&
     failed === 0 &&
     typecheckMeasured &&
@@ -818,6 +817,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     generatedAt: new Date().toISOString(),
     repository: options.execution.repository,
     commitSha: options.execution.commitSha,
+    ...(options.checkoutState ? { checkoutState: options.checkoutState } : {}),
     ...(options.isExample === true ? { isExample: true } : {}),
     execution: options.execution,
     policy,

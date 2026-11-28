@@ -43,7 +43,8 @@ const untrustedExec = verifyExecutionTrust(
 
 const audit = runBackpressureAudit({
   repoRoot,
-  execution: untrustedExec
+  execution: untrustedExec,
+  checkoutState: checkout.dirty === null ? "unknown" : checkout.dirty ? "dirty" : "clean"
 })
 
 // Explicit illustrative example kept strictly separate from live checkout audit evidence.

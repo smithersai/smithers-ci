@@ -90,6 +90,8 @@ describe("Normal CLI Audit & Trust Provenance (real bin/smithers-ci.mjs entry po
     const report = JSON.parse(jsonText) as BackpressureAuditReport
 
     expect(report.repository).toBe("smithersai/smithers-ci")
+    expect(report.checkoutState).toBe(expectedCheckout.dirty === null ? "unknown" : expectedCheckout.dirty ? "dirty" : "clean")
+    expect(htmlText).toContain(`Checkout ${report.checkoutState}`)
     expect(report.commitSha).toBe(expectedCheckout.commitSha)
     expect(report.isExample).toBeUndefined()
     expect(report.execution.effectiveTier).toBe("untrusted:community")
@@ -390,17 +392,18 @@ describe("Normal CLI Audit & Trust Provenance (real bin/smithers-ci.mjs entry po
 
   it("enforces checkout binding and no tier widening when an external trust-receipt adapter is injected", async () => {
     const repoDir = makeTempDir("smithers-adapter-contract-")
-    mkdirSync(join(repoDir, ".git"), { recursive: true })
-    writeFileSync(join(repoDir, ".git", "HEAD"), `${SOURCE_COMMIT}\n`, "utf8")
-    writeFileSync(
-      join(repoDir, ".git", "config"),
-      '[remote "origin"]\n\turl = https://github.com/smithersai/smithers-ci.git\n',
-      "utf8"
-    )
-    const receiptFile = join(repoDir, "receipt.json")
-    writeFileSync(receiptFile, '{"type":"external-receipt"}\n', "utf8")
-    const outDir = join(repoDir, "out")
-
+    const jj = (...args: string[]) => {
+      const result = spawnSync("jj", args, { cwd: repoDir, encoding: "utf8" })
+      expect(result.status, result.error?.message ?? result.stderr).toBe(0)
+    }
+    jj("git", "init")
+    jj("git", "remote", "add", "origin", "https://github.com/smithersai/smithers-ci")
+    writeFileSync(join(repoDir, "tracked"), "fixture")
+    jj("--config", 'user.name="Checkout fixture"', "--config", 'user.email="test@example.org"', "commit", "-m", "fixture")
+    const receiptFile = join(makeTempDir("smithers-contract-"), "receipt.json")
+    writeFileSync(receiptFile, "{}")
+    const checkout = resolveCheckoutIdentity(repoDir, cleanCliEnv())
+    expect(checkout).toMatchObject({ commitSource: "jj", dirty: false })
     const secret = "external-verifier-test-only-key-0123456789"
     const now = new Date("2026-11-27T12:00:00.000Z")
     const makeVerified = (overrides: {
@@ -416,7 +419,7 @@ describe("Normal CLI Audit & Trust Provenance (real bin/smithers-ci.mjs entry po
             callerKind: tier === "trusted:maintainer" ? "person" : "sandbox",
             actor: tier === "trusted:maintainer" ? "roninjin10" : "cfbox-verified-01",
             repository: overrides.repository ?? "smithersai/smithers-ci",
-            commitSha: overrides.commitSha ?? SOURCE_COMMIT,
+            commitSha: overrides.commitSha ?? checkout.commitSha,
             sandboxId: tier === "trusted:sandbox" ? "cfbox-verified-01" : null,
             issuedAt: "2026-11-27T11:55:00.000Z",
             expiresAt: "2026-11-27T12:30:00.000Z"
@@ -427,73 +430,22 @@ describe("Normal CLI Audit & Trust Provenance (real bin/smithers-ci.mjs entry po
       )
     }
 
-    const baseEnv = cleanCliEnv({ PATH: dirname(process.execPath) })
+    const verify = (execution: ReturnType<typeof makeVerified>, receiptPath: string | null = receiptFile) =>
+      resolveCliExecutionTrust({
+        checkout,
+        requestedTier: "trusted:sandbox",
+        receiptPath,
+        now: () => now,
+        adapter: {
+          id: "test-external-verifier",
+          verifyReceipt: () => ({ ok: true, adapterId: "test-external-verifier", execution })
+        }
+      })
+    expect((await verify(makeVerified({ commitSha: PACKED_COMMIT }))).ok).toBe(false)
+    expect((await verify(makeVerified({ tier: "trusted:maintainer" }))).ok).toBe(false)
+    expect((await verify(makeVerified(), null)).ok).toBe(false)
+    expect((await verify(makeVerified())).ok).toBe(true)
 
-    const mismatchedCommitAdapter: ExternalTrustReceiptAdapter = {
-      id: "test-external-verifier",
-      verifyReceipt: () => ({
-        ok: true,
-        adapterId: "test-external-verifier",
-        execution: makeVerified({ commitSha: PACKED_COMMIT })
-      })
-    }
-    expect(
-      await runCli(["audit", "--trust", "trusted:sandbox", "--trust-receipt", receiptFile, "--out", outDir], repoDir, {
-        trustReceiptAdapter: mismatchedCommitAdapter,
-        env: baseEnv,
-        now: () => now
-      })
-    ).toBe(1)
-    expect(existsSync(join(outDir, "lighthouse-audit.json"))).toBe(false)
-
-    const wideningAdapter: ExternalTrustReceiptAdapter = {
-      id: "test-external-verifier",
-      verifyReceipt: () => ({
-        ok: true,
-        adapterId: "test-external-verifier",
-        execution: makeVerified({ tier: "trusted:maintainer" })
-      })
-    }
-    expect(
-      await runCli(["audit", "--trust", "trusted:sandbox", "--trust-receipt", receiptFile, "--out", outDir], repoDir, {
-        trustReceiptAdapter: wideningAdapter,
-        env: baseEnv,
-        now: () => now
-      })
-    ).toBe(1)
-
-    const validAdapter: ExternalTrustReceiptAdapter = {
-      id: "test-external-verifier",
-      verifyReceipt: () => ({
-        ok: true,
-        adapterId: "test-external-verifier",
-        execution: makeVerified()
-      })
-    }
-    expect(
-      await runCli(["audit", "--trust", "trusted:sandbox", "--out", outDir], repoDir, {
-        trustReceiptAdapter: validAdapter,
-        env: baseEnv,
-        now: () => now
-      })
-    ).toBe(1)
-
-    const code = await runCli(
-      ["audit", "--trust", "trusted:sandbox", "--trust-receipt", receiptFile, "--out", outDir],
-      repoDir,
-      {
-        trustReceiptAdapter: validAdapter,
-        env: baseEnv,
-        now: () => now
-      }
-    )
-    expect([0, 1]).toContain(code)
-    const report = JSON.parse(readFileSync(join(outDir, "lighthouse-audit.json"), "utf8")) as BackpressureAuditReport
-    expect(report.execution.trusted).toBe(true)
-    expect(report.execution.effectiveTier).toBe("trusted:sandbox")
-    expect(report.commitSha).toBe(SOURCE_COMMIT)
-    expect(report.gate.satisfied).toBe(false)
-    expect(report.summary.releaseReady).toBe(false)
   })
   it("records explicit caller-supplied measurements without inventing durations and still keeps untrusted gates unsatisfied", () => {
     const outDir = makeTempDir("smithers-cli-measured-")
@@ -555,6 +507,36 @@ describe("Normal CLI Audit & Trust Provenance (real bin/smithers-ci.mjs entry po
     expect(report.repository).toBe("smithersai/smithers-ci")
   })
 
+
+  it("reads ordinary tracked edits since the last jj snapshot and declines Git-only unknown cleanliness", async () => {
+    const root = makeTempDir("smithers-checkout-state-")
+    const jj = (...args: string[]) => {
+      const result = spawnSync("jj", args, { cwd: root, encoding: "utf8" })
+      expect(result.status, result.error?.message ?? result.stderr).toBe(0)
+      return result.stdout.trim()
+    }
+    jj("git", "init", "--colocate")
+    jj("git", "remote", "add", "origin", "https://github.com/smithersai/smithers-ci")
+    writeFileSync(join(root, "tracked.txt"), "first")
+    jj("--config", 'user.name="Checkout fixture"', "--config", 'user.email="test@example.org"', "commit", "-m", "fixture")
+    expect(resolveCheckoutIdentity(root).dirty).toBe(false)
+    writeFileSync(join(root, "tracked.txt"), "ordinary edit")
+    expect(resolveCheckoutIdentity(root).dirty).toBe(true)
+    const gitOnly = resolveCheckoutIdentity(root, cleanCliEnv({ PATH: dirname(process.execPath) + "/missing" }))
+    expect(gitOnly.commitSource).toBe("git")
+    expect(gitOnly.dirty).toBeNull()
+    const denied = await resolveCliExecutionTrust({
+      checkout: gitOnly, requestedTier: "trusted:sandbox", receiptPath: "unused",
+      adapter: { id: "unused", verifyReceipt: () => { throw new Error("Unexpected verification") } }
+    })
+    expect(denied).toMatchObject({ ok: false, code: "dirty_checkout" })
+  })
+
+  it("requires both caller-reported test counts", () => {
+    const result = runRealCli(["audit", "--tests-passed", "6"])
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain("Supply both")
+  })
 
   it("rejects elevation in resolveCliExecutionTrust when checkout is dirty, unverified, or has mismatched env SHA", async () => {
     const dummyAdapter: ExternalTrustReceiptAdapter = {
