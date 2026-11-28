@@ -301,7 +301,7 @@ export function runIncrementalReplay(options: {
 export function formatReplayReport(report: IncrementalReplayReport): string {
   const lines = [
     `Smithers CI Incremental Replay (${report.provenanceBadge})`,
-    `Repository: ${report.repository} @ ${report.commitSha.slice(0, 12)}`,
+    `Repository: ${report.repository} @ ${/^[0-9a-f]{40}$/i.test(report.commitSha) ? report.commitSha.slice(0, 12) : report.commitSha}`,
     `Object Store: ${report.objectStoreEndpoint}`,
     `Targets: ${report.totalTargets} | Cache Hits: ${report.cacheHits}/${report.totalTargets} (${Math.round(report.hitRate * 100)}%) | Mismatches: ${report.mismatches}`,
     `Timing: cold ${(report.coldBaselineMs / 1000).toFixed(2)}s vs replay ${(report.observedMs / 1000).toFixed(2)}s (${report.speedupFactor}x faster)`,

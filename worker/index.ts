@@ -147,7 +147,10 @@ export default {
         ok: true,
         service: "smithers-ci-factory",
         repository: FACTORY_SNAPSHOT.repository,
-        lighthouseScore: FACTORY_SNAPSHOT.trustedAudit.overallScore,
+        commitSha: FACTORY_SNAPSHOT.commitSha,
+        lighthouseScore: FACTORY_SNAPSHOT.audit.overallScore,
+        auditProvenance: FACTORY_SNAPSHOT.audit.policy.provenanceBadge,
+        gateSatisfied: FACTORY_SNAPSHOT.audit.gate.satisfied,
         objectStore: FACTORY_SNAPSHOT.objectStoreEndpoint,
         durableObject: Boolean(env.FACTORY_HUB)
       })
@@ -219,11 +222,15 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/api/audit.json") {
-      return jsonResponse(FACTORY_SNAPSHOT.trustedAudit)
+      return jsonResponse(FACTORY_SNAPSHOT.audit)
     }
 
     if (request.method === "GET" && url.pathname === "/api/audit-untrusted.json") {
       return jsonResponse(FACTORY_SNAPSHOT.untrustedAudit)
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/audit-example.json") {
+      return jsonResponse(FACTORY_SNAPSHOT.exampleTrustedAudit)
     }
 
     // Stateful Durable Object routes: POST MCP, one-time token mint & exchange, live factory state, waitlist

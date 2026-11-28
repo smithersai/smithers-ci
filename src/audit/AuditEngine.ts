@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { inventoryGithubWorkflows } from "../ci/WorkflowInventory.ts"
+import { validateHomeJson } from "../factory/Audience.ts"
+import { type MythicalHistorySnapshot, verifyMythicalHistory } from "../history/MythicalHistory.ts"
 import {
   ROOT_INPUT_TRACING_TABLE,
   type GateCheckResult,
@@ -60,6 +62,7 @@ export interface BackpressureAuditReport {
   readonly generatedAt: string
   readonly repository: string
   readonly commitSha: string
+  readonly isExample?: boolean
   readonly execution: VerifiedExecution
   readonly policy: ReturnType<typeof evaluateExecutionPolicy>
   readonly gate: GateCheckResult
@@ -114,7 +117,62 @@ export interface AuditRunOptions {
     readonly durationMs: number
   }
   readonly typecheckPassed?: boolean
+  readonly typecheckDurationMs?: number
+  readonly replayResults?: {
+    readonly targets: number
+    readonly mismatches: number
+    readonly cacheHits?: number
+    readonly speedupFactor?: number
+    readonly durationMs?: number
+    readonly evidence?: ReadonlyArray<string>
+  }
+  readonly formalResults?: {
+    readonly theorems: number
+    readonly sorryCount: number
+    readonly packages?: number
+    readonly files?: number
+    readonly durationMs?: number
+    readonly evidence?: ReadonlyArray<string>
+  }
+  readonly fuzzResults?: {
+    readonly suites: number
+    readonly passed: number
+    readonly failed: number
+    readonly durationMs?: number
+    readonly evidence?: ReadonlyArray<string>
+  }
+  readonly waterfall?: ReadonlyArray<TimingWaterfallStep>
+  readonly isExample?: boolean
   readonly releaseThreshold?: number
+}
+
+function measure<T>(fn: () => T): { readonly value: T; readonly durationMs: number } {
+  const start = performance.now()
+  const value = fn()
+  return { value, durationMs: Math.max(0, Math.round(performance.now() - start)) }
+}
+
+function inspectTsconfig(repoRoot: string): {
+  readonly exists: boolean
+  readonly strict: boolean
+  readonly noUncheckedIndexedAccess: boolean
+} {
+  const path = join(repoRoot, "tsconfig.json")
+  if (!existsSync(path)) {
+    return { exists: false, strict: false, noUncheckedIndexedAccess: false }
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as {
+      compilerOptions?: { strict?: boolean; noUncheckedIndexedAccess?: boolean }
+    }
+    return {
+      exists: true,
+      strict: parsed.compilerOptions?.strict === true,
+      noUncheckedIndexedAccess: parsed.compilerOptions?.noUncheckedIndexedAccess === true
+    }
+  } catch {
+    return { exists: true, strict: false, noUncheckedIndexedAccess: false }
+  }
 }
 
 function scanPublicProseHygiene(repoRoot: string): {
@@ -179,6 +237,38 @@ function inspectWikiDirectory(repoRoot: string): {
   return { pageCount: files.length, brokenLinks, pagesWithDiagrams }
 }
 
+function inspectMythicalHistory(repoRoot: string): {
+  readonly exists: boolean
+  readonly valid: boolean
+  readonly issues: ReadonlyArray<string>
+  readonly epics: number
+  readonly commits: number
+} {
+  const path = join(repoRoot, "history", "mythical-history.json")
+  if (!existsSync(path)) {
+    return { exists: false, valid: false, issues: ["Missing history/mythical-history.json"], epics: 0, commits: 0 }
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as MythicalHistorySnapshot
+    const verification = verifyMythicalHistory(parsed)
+    return {
+      exists: true,
+      valid: verification.valid,
+      issues: verification.issues,
+      epics: Array.isArray(parsed.epics) ? parsed.epics.length : 0,
+      commits: Array.isArray(parsed.commits) ? parsed.commits.length : 0
+    }
+  } catch {
+    return {
+      exists: true,
+      valid: false,
+      issues: ["Failed to parse history/mythical-history.json"],
+      epics: 0,
+      commits: 0
+    }
+  }
+}
+
 export function runBackpressureAudit(options: AuditRunOptions): BackpressureAuditReport {
   const root = resolve(options.repoRoot)
   const releaseThreshold = options.releaseThreshold ?? 90
@@ -187,6 +277,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   const audits: AuditCheck[] = []
 
   // --- 1. Correctness & Determinism ---
+  const tsconfigInfo = measure(() => inspectTsconfig(root))
   const typecheckMeasured = typeof options.typecheckPassed === "boolean"
   const typecheckOk = options.typecheckPassed === true
   audits.push({
@@ -195,63 +286,88 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     title: "Strict TypeScript Typecheck",
     description: "Every core module, worker route, and factory UI file compiles with strict mode enabled.",
     status: !typecheckMeasured ? "warn" : typecheckOk ? "pass" : "fail",
-    score: !typecheckMeasured ? 65 : typecheckOk ? 100 : 0,
+    score: !typecheckMeasured ? 50 : typecheckOk ? 100 : 0,
     weight: 3,
     displayValue: !typecheckMeasured
       ? "Not measured"
       : typecheckOk
         ? "0 errors"
         : "Type errors detected",
-    durationMs: 420,
+    durationMs: typecheckMeasured
+      ? Math.max(0, Math.round(options.typecheckDurationMs ?? 0))
+      : tsconfigInfo.durationMs,
     evidence: [
-      "tsconfig.json strict: true, noUncheckedIndexedAccess: true",
+      tsconfigInfo.value.exists
+        ? `tsconfig.json strict: ${tsconfigInfo.value.strict}, noUncheckedIndexedAccess: ${tsconfigInfo.value.noUncheckedIndexedAccess}`
+        : "No tsconfig.json found in checkout root",
       !typecheckMeasured
-        ? "Pass explicit typecheckPassed from `tsc --noEmit` to clear this check"
+        ? "Typecheck was not executed in this audit invocation; run `bun run typecheck` and supply explicit measured status to clear this check"
         : typecheckOk
-          ? "tsc --noEmit exited 0"
-          : "tsc --noEmit failed"
-    ]
+          ? "Measured typecheck status: passed"
+          : "Measured typecheck status: failed"
+    ],
+    remediation: typecheckMeasured && typecheckOk ? undefined : "Run `bun run typecheck` and pass the observed result."
   })
 
-  const testsPassed = options.testResults?.passed ?? 0
-  const testsFailed = options.testResults?.failed ?? 0
+  const hasTestResults = options.testResults !== undefined
+  const testsPassed = Math.max(0, Math.floor(options.testResults?.passed ?? 0))
+  const testsFailed = Math.max(0, Math.floor(options.testResults?.failed ?? 0))
   const testTotal = testsPassed + testsFailed
-  const testScore =
-    testTotal === 0 ? 70 : testsFailed === 0 ? 100 : Math.max(0, Math.round((testsPassed / testTotal) * 100))
+  const testsMeasured = hasTestResults && testTotal > 0
+  const testsOk = testsMeasured && testsFailed === 0
+  const testScore = !testsMeasured
+    ? 50
+    : testsFailed === 0
+      ? 100
+      : Math.max(0, Math.round((testsPassed / testTotal) * 100))
   audits.push({
     id: "unit-integration-tests",
     category: "correctness",
     title: "Unit, Security & Protocol Suites",
     description: "Verifies trust isolation, one-time tokens, CAS integrity, audit scoring, wiki, history, and MCP tools.",
-    status: testTotal === 0 ? "warn" : testsFailed === 0 ? "pass" : "fail",
+    status: !testsMeasured ? "warn" : testsFailed === 0 ? "pass" : "fail",
     score: testScore,
     weight: 4,
-    displayValue: testTotal > 0 ? `${testsPassed}/${testTotal} passed` : "Not measured",
-    durationMs: options.testResults?.durationMs ?? 890,
+    displayValue: testsMeasured ? `${testsPassed}/${testTotal} passed` : "Not measured",
+    durationMs: hasTestResults ? Math.max(0, Math.round(options.testResults?.durationMs ?? 0)) : 0,
     evidence: [
-      `Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP`,
-      testTotal > 0 ? `Observed ${testsPassed} passing and ${testsFailed} failing tests` : "Run `bun run test` and supply observed counts to satisfy this check"
-    ]
+      testsMeasured
+        ? `Observed ${testsPassed} passing and ${testsFailed} failing tests`
+        : "No test results were supplied to this audit invocation; run `bun run test` and supply observed counts to satisfy this check"
+    ],
+    remediation: testsOk ? undefined : "Run `bun run test` and pass the observed test counts."
   })
 
+  const replay = options.replayResults
+  const replayMeasured = replay !== undefined && replay.targets > 0
+  const replayOk = replayMeasured && replay.mismatches === 0
   audits.push({
     id: "replay-zero-mismatch",
     category: "correctness",
     title: "Kernel-Recorded Zero-Mismatch Parity",
     description: "smthrs-observe seccomp-unotify recording guarantees cached verdicts match clean baseline execution.",
-    status: "pass",
-    score: 100,
+    status: !replayMeasured ? "warn" : replayOk ? "pass" : "fail",
+    score: !replayMeasured ? 50 : replayOk ? 100 : 0,
     weight: 3,
-    displayValue: "0 mismatches",
-    durationMs: 310,
-    evidence: [
-      "Measured on smithersai/smithers-ci-example (4 commits, 0 mismatches, 4.4x docs speedup)",
-      "Measured on smithersai/needlefish (25 jobs, 0 refusals, 0 mismatches)",
-      "Measured on elizaOS/eliza inside isolated Cloudflare Sandbox (0 mismatches, zero host clone)"
-    ]
+    displayValue: !replayMeasured
+      ? "Not measured"
+      : replayOk
+        ? `0 mismatches (${replay.targets} targets)`
+        : `${replay.mismatches} mismatches`,
+    durationMs: replayMeasured ? Math.max(0, Math.round(replay.durationMs ?? 0)) : 0,
+    evidence: replayMeasured
+      ? [
+          `Observed ${replay.targets} replay target(s) with ${replay.mismatches} mismatch(es)`,
+          ...(replay.evidence ?? [])
+        ]
+      : [
+          "Replay parity was not measured in this audit invocation; run `bun run replay` and supply measured replay results"
+        ],
+    remediation: replayOk ? undefined : "Run incremental replay against this checkout and provide measured parity evidence."
   })
 
-  const prose = scanPublicProseHygiene(root)
+  const proseMeasured = measure(() => scanPublicProseHygiene(root))
+  const prose = proseMeasured.value
   const proseClean = prose.emDashHits.length === 0 && prose.jjhubHits.length === 0 && prose.filesScanned > 0
   audits.push({
     id: "public-copy-hygiene",
@@ -259,12 +375,14 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     title: "Public Copy & Brand Hygiene",
     description: "Enforces zero em dashes and zero internal codenames across public docs, wiki, and home.json.",
     status: proseClean ? "pass" : prose.filesScanned === 0 ? "warn" : "fail",
-    score: proseClean ? 100 : prose.filesScanned === 0 ? 75 : 40,
+    score: proseClean ? 100 : prose.filesScanned === 0 ? 50 : 40,
     weight: 2,
     displayValue: proseClean
       ? `${prose.filesScanned} files clean`
-      : `${prose.emDashHits.length + prose.jjhubHits.length} findings`,
-    durationMs: 45,
+      : prose.filesScanned === 0
+        ? "No public copy files"
+        : `${prose.emDashHits.length + prose.jjhubHits.length} findings`,
+    durationMs: proseMeasured.durationMs,
     evidence: [
       `Scanned ${prose.filesScanned} public docs and wiki files`,
       prose.emDashHits.length === 0 ? "0 em dashes found" : `Em dashes in: ${prose.emDashHits.join(", ")}`,
@@ -274,12 +392,16 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   })
 
   // --- 2. Cache & Speed ---
-  const workspacePath = join(root, ".smithers", "WORKSPACE.ts")
-  const workspaceText = existsSync(workspacePath) ? readFileSync(workspacePath, "utf8") : ""
-  const hasRemoteCache =
-    workspaceText.includes("https://build.smithers.sh") &&
-    workspaceText.includes("SMITHERS_CACHE_READ_TOKEN") &&
-    workspaceText.includes("SMITHERS_CACHE_WRITE_TOKEN")
+  const remoteCacheCheck = measure(() => {
+    const workspacePath = join(root, ".smithers", "WORKSPACE.ts")
+    const workspaceText = existsSync(workspacePath) ? readFileSync(workspacePath, "utf8") : ""
+    return (
+      workspaceText.includes("https://build.smithers.sh") &&
+      workspaceText.includes("SMITHERS_CACHE_READ_TOKEN") &&
+      workspaceText.includes("SMITHERS_CACHE_WRITE_TOKEN")
+    )
+  })
+  const hasRemoteCache = remoteCacheCheck.value
 
   audits.push({
     id: "shared-object-store",
@@ -290,16 +412,17 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     score: hasRemoteCache ? 100 : 25,
     weight: 4,
     displayValue: hasRemoteCache ? "build.smithers.sh" : "Missing remote cache",
-    durationMs: 22,
+    durationMs: remoteCacheCheck.durationMs,
     evidence: [
       hasRemoteCache
-        ? ".smithers/WORKSPACE.ts wires https://build.smithers.sh with split read/write secrets"
+        ? ".smithers/WORKSPACE.ts declares https://build.smithers.sh with split read/write secret names"
         : ".smithers/WORKSPACE.ts missing build.smithers.sh configuration",
       "Content-addressed /ac + /cas plus R2 artifacts bucket (http://artifacts.smithers.internal)"
     ]
   })
 
-  const hasPackageTargets = existsSync(join(root, "PACKAGE.ts"))
+  const packageTargetCheck = measure(() => existsSync(join(root, "PACKAGE.ts")))
+  const hasPackageTargets = packageTargetCheck.value
   audits.push({
     id: "granular-incremental-targets",
     category: "cache-speed",
@@ -309,32 +432,43 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     score: hasPackageTargets ? 100 : 20,
     weight: 3,
     displayValue: hasPackageTargets ? "3-tier graph" : "No PACKAGE.ts",
-    durationMs: 18,
+    durationMs: packageTargetCheck.durationMs,
     evidence: [
-      hasPackageTargets ? "PACKAGE.ts declares fast-check, medium-check, full-check, audit, and docs targets" : "Missing root PACKAGE.ts"
+      hasPackageTargets
+        ? "PACKAGE.ts declares fast-check, medium-check, full-check, audit, and docs targets"
+        : "Missing root PACKAGE.ts"
     ]
   })
 
+  const speedup = replay?.speedupFactor
+  const speedupMeasured = typeof speedup === "number" && Number.isFinite(speedup) && speedup > 0
+  const speedupPass = speedupMeasured && speedup >= 1.2
   audits.push({
     id: "warm-cache-speedup",
     category: "cache-speed",
     title: "Warm Cache Replay Speedup",
     description: "Measured end-to-end wall-time reduction from shared object store hits.",
-    status: "pass",
-    score: 96,
+    status: !speedupMeasured ? "warn" : speedupPass ? "pass" : "warn",
+    score: !speedupMeasured ? 50 : speedup >= 2 ? 100 : speedup >= 1.2 ? 92 : 70,
     weight: 3,
-    displayValue: "4.4x docs / 1.3x code",
-    durationMs: 140,
-    evidence: [
-      "Docs-only change: 12.9s baseline reduced to 2.9s cached (4/4 steps reused)",
-      "Multi-package replay: 53.3s baseline reduced to 40.6s normal mode"
-    ]
+    displayValue: speedupMeasured ? `${speedup.toFixed(1)}x replay` : "Not measured",
+    durationMs: speedupMeasured ? Math.max(0, Math.round(replay?.durationMs ?? 0)) : 0,
+    evidence: speedupMeasured
+      ? [
+          `Observed ${speedup.toFixed(2)}x speedup across ${replay?.targets ?? 0} replay target(s)` +
+            (typeof replay?.cacheHits === "number" ? ` (${replay.cacheHits} cache hits)` : "")
+        ]
+      : ["Warm cache replay speedup was not measured in this audit invocation"],
+    remediation: speedupPass ? undefined : "Run cached replay on this checkout and pass measured timing evidence."
   })
 
   // --- 3. Security & Trust Isolation ---
-  const trustModuleExists = existsSync(join(root, "src", "trust", "ExecutionTrust.ts"))
-  const tokenModuleExists = existsSync(join(root, "src", "auth", "OneTimeToken.ts"))
-  const storeModuleExists = existsSync(join(root, "src", "store", "ObjectStore.ts"))
+  const securityFiles = measure(() => ({
+    trustModuleExists: existsSync(join(root, "src", "trust", "ExecutionTrust.ts")),
+    tokenModuleExists: existsSync(join(root, "src", "auth", "OneTimeToken.ts")),
+    storeModuleExists: existsSync(join(root, "src", "store", "ObjectStore.ts"))
+  }))
+  const { trustModuleExists, tokenModuleExists, storeModuleExists } = securityFiles.value
 
   audits.push({
     id: "untrusted-cache-isolation",
@@ -344,8 +478,8 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     status: trustModuleExists && storeModuleExists ? "pass" : "fail",
     score: trustModuleExists && storeModuleExists ? 100 : 0,
     weight: 4,
-    displayValue: "Hard isolated",
-    durationMs: 34,
+    displayValue: trustModuleExists && storeModuleExists ? "Hard isolated" : "Modules missing",
+    durationMs: securityFiles.durationMs,
     evidence: [
       "ExecutionTrust enforces allowCacheWrite: false for untrusted:community",
       "SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers",
@@ -357,15 +491,18 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     id: "untrusted-gate-non-bypass",
     category: "security-trust",
     title: "Trusted-Only Merge & Release Gates",
-    description: "Only controlled Smithers sandboxes or verified maintainers can clear backpressure gates.",
+    description: "Only externally verified controlled Smithers sandboxes or maintainers can clear backpressure gates.",
     status: trustModuleExists ? "pass" : "fail",
     score: trustModuleExists ? 100 : 0,
     weight: 4,
     displayValue: options.execution.trusted ? policy.provenanceBadge : "PREVIEW ONLY",
-    durationMs: 19,
+    durationMs: 0,
     evidence: [
       `Current execution tier: ${options.execution.effectiveTier} (${options.execution.actor})`,
-      `Gate satisfaction eligible: ${policy.canSatisfyGates ? "yes" : "no (untrusted community preview)"}`
+      `Gate satisfaction eligible: ${policy.canSatisfyGates ? "yes" : "no (untrusted local/community preview)"}`,
+      ...(options.execution.downgraded && options.execution.downgradeReason
+        ? [`Downgraded: ${options.execution.downgradeReason}`]
+        : [])
     ]
   })
 
@@ -377,8 +514,8 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     status: tokenModuleExists ? "pass" : "fail",
     score: tokenModuleExists ? 100 : 0,
     weight: 3,
-    displayValue: "Single-use + PKCE",
-    durationMs: 28,
+    displayValue: tokenModuleExists ? "Single-use + PKCE" : "Module missing",
+    durationMs: 0,
     evidence: [
       "Raw tokens burn atomically on first redemption (already_redeemed on replay)",
       "Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime",
@@ -395,47 +532,80 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     score: 100,
     weight: 2,
     displayValue: `${ROOT_INPUT_TRACING_TABLE.length} boundaries traced`,
-    durationMs: 12,
+    durationMs: 0,
     evidence: ROOT_INPUT_TRACING_TABLE.map((row) => `${row.privilegedStep} -> ${row.trustBoundary}`)
   })
 
   // --- 4. Formal & Fuzz Assurance ---
+  const formal = options.formalResults
+  const formalMeasured = formal !== undefined && formal.theorems > 0
+  const formalOk = formalMeasured && formal.sorryCount === 0
   audits.push({
     id: "lean4-formal-specs",
     category: "formal-fuzz",
     title: "Lean 4 Formal Verification Specs",
     description: "Machine-checked theorems covering inventory, decomposition, sharding, apply, replay, and observer.",
-    status: "pass",
-    score: 100,
+    status: !formalMeasured ? "warn" : formalOk ? "pass" : "fail",
+    score: !formalMeasured ? 50 : formalOk ? 100 : Math.max(0, 100 - formal.sorryCount * 20),
     weight: 4,
-    displayValue: "387 theorems / 0 sorry",
-    durationMs: 95,
-    evidence: [
-      "6 Lean 4.32.0 packages across 51 .lean files",
-      "387 proven theorems with 0 sorry axioms",
-      "~55,685 differential fuzz queries cross-checked against live runtime"
-    ]
+    displayValue: !formalMeasured ? "Not measured" : `${formal.theorems} theorems / ${formal.sorryCount} sorry`,
+    durationMs: formalMeasured ? Math.max(0, Math.round(formal.durationMs ?? 0)) : 0,
+    evidence: formalMeasured
+      ? [
+          `Observed ${formal.theorems} proven theorems with ${formal.sorryCount} sorry axioms`,
+          ...(formal.packages !== undefined && formal.files !== undefined
+            ? [`${formal.packages} Lean packages across ${formal.files} .lean files`]
+            : []),
+          ...(formal.evidence ?? [])
+        ]
+      : ["No Lean 4 verification results were measured in this audit invocation"],
+    remediation: formalOk ? undefined : "Run Lean 4 verification and pass observed theorem counts to measure this check."
   })
 
+  const fuzzFileCheck = measure(() => existsSync(join(root, "src", "security", "Adversarial.fuzz.test.ts")))
+  const fuzzFileExists = fuzzFileCheck.value
+  const fuzz = options.fuzzResults
+  const fuzzTotal = (fuzz?.passed ?? 0) + (fuzz?.failed ?? 0)
+  const fuzzMeasured = fuzz !== undefined && fuzzTotal > 0
+  const fuzzOk = fuzzMeasured && (fuzz?.failed ?? 0) === 0
   audits.push({
     id: "fuzz-property-assurance",
     category: "formal-fuzz",
     title: "Adversarial Fuzz & Property Suite",
     description: "Fuzzes trust attestations, token replay, CAS corruption, XSS escaping, and Home.read bounds.",
-    status: "pass",
-    score: 96,
+    status: !fuzzMeasured ? "warn" : fuzzOk ? "pass" : "fail",
+    score: !fuzzMeasured
+      ? 50
+      : fuzzOk
+        ? 100
+        : Math.max(0, Math.round(((fuzz?.passed ?? 0) / fuzzTotal) * 100)),
     weight: 3,
-    displayValue: "40+ fuzz suites",
-    durationMs: 180,
-    evidence: [
-      "65 historical bugs uncovered and 55 fixed across core packages/ci fuzz waves",
-      "Local adversarial tests verify zero XSS, zero cache poisoning, and zero token replay"
-    ]
+    displayValue: !fuzzMeasured
+      ? fuzzFileExists
+        ? "Suite present (not measured)"
+        : "Not measured"
+      : `${fuzz.suites} suite${fuzz.suites === 1 ? "" : "s"} (${fuzz.passed}/${fuzzTotal} pass)`,
+    durationMs: fuzzMeasured ? Math.max(0, Math.round(fuzz?.durationMs ?? 0)) : fuzzFileCheck.durationMs,
+    evidence: fuzzMeasured
+      ? [
+          `Observed ${fuzz.passed}/${fuzzTotal} passing adversarial fuzz checks across ${fuzz.suites} suite(s)`,
+          ...(fuzz.evidence ?? [])
+        ]
+      : [
+          fuzzFileExists
+            ? "src/security/Adversarial.fuzz.test.ts is present in this checkout, but was not executed in this audit invocation"
+            : "No adversarial fuzz suite results were measured in this audit invocation"
+        ],
+    remediation: fuzzOk ? undefined : "Execute the adversarial fuzz suite and supply measured results."
   })
 
   // --- 5. Wiki & Docs Freshness ---
-  const wikiStats = inspectWikiDirectory(root)
-  const hasCodingProject = existsSync(join(root, ".smithers", "coding-project.json"))
+  const wikiMeasured = measure(() => ({
+    stats: inspectWikiDirectory(root),
+    hasCodingProject: existsSync(join(root, ".smithers", "coding-project.json"))
+  }))
+  const wikiStats = wikiMeasured.value.stats
+  const hasCodingProject = wikiMeasured.value.hasCodingProject
   const wikiHealthy = wikiStats.pageCount >= 6 && wikiStats.brokenLinks.length === 0 && hasCodingProject
 
   audits.push({
@@ -447,7 +617,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     score: wikiHealthy ? 100 : wikiStats.pageCount > 0 ? 70 : 0,
     weight: 4,
     displayValue: `${wikiStats.pageCount} pages / ${wikiStats.brokenLinks.length} broken`,
-    durationMs: 36,
+    durationMs: wikiMeasured.durationMs,
     evidence: [
       `${wikiStats.pageCount} markdown wiki pages discovered under wiki/`,
       `${wikiStats.brokenLinks.length} broken [[wikilinks]]`,
@@ -465,75 +635,83 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     score: Math.round(diagramsRatio * 100),
     weight: 2,
     displayValue: `${wikiStats.pagesWithDiagrams}/${wikiStats.pageCount} pages`,
-    durationMs: 15,
+    durationMs: 0,
     evidence: [`${wikiStats.pagesWithDiagrams} of ${wikiStats.pageCount} wiki pages embed diagrams`]
   })
 
-  const historySeedExists = existsSync(join(root, "history", "mythical-history.json"))
+  const historyMeasured = measure(() => inspectMythicalHistory(root))
+  const historyInfo = historyMeasured.value
   audits.push({
     id: "mythical-history-integrity",
     category: "wiki-docs",
     title: "Mythical History Linear Stack",
     description: "Deterministic epic timeline folding real commits with evidence and tried notes.",
-    status: historySeedExists ? "pass" : "fail",
-    score: historySeedExists ? 100 : 0,
+    status: historyInfo.valid ? "pass" : "fail",
+    score: historyInfo.valid ? 100 : 0,
     weight: 3,
-    displayValue: historySeedExists ? "Linear & verified" : "Missing history",
-    durationMs: 24,
-    evidence: [
-      historySeedExists
-        ? "history/mythical-history.json verified against deterministic sequencer invariants"
-        : "Missing history/mythical-history.json"
-    ]
+    displayValue: historyInfo.valid
+      ? `${historyInfo.epics} epics / ${historyInfo.commits} commits`
+      : historyInfo.exists
+        ? "History invalid"
+        : "Missing history",
+    durationMs: historyMeasured.durationMs,
+    evidence: historyInfo.valid
+      ? [
+          `history/mythical-history.json verified (${historyInfo.epics} epics, ${historyInfo.commits} commits)`
+        ]
+      : historyInfo.issues
   })
 
   // --- 6. Release & Cloud Readiness ---
-  const homePath = join(root, ".smithers", "home.json")
-  const factoryPath = join(root, ".smithers", "factory.json")
-  let homeAudiences = 0
-  let homeValid = false
-  if (existsSync(homePath)) {
-    try {
-      const parsed = JSON.parse(readFileSync(homePath, "utf8")) as { sections?: Array<{ audience?: string }> }
-      const auds = new Set((parsed.sections ?? []).map((s) => s.audience ?? "everyone"))
-      homeAudiences = auds.size
-      homeValid = auds.has("maintainer") && auds.has("contributor") && auds.has("everyone")
-    } catch {
-      homeValid = false
+  const homeMeasured = measure(() => {
+    const homePath = join(root, ".smithers", "home.json")
+    if (!existsSync(homePath)) {
+      return { valid: false, audiences: 0, reason: "Missing .smithers/home.json" }
     }
-  }
+    const check = validateHomeJson(readFileSync(homePath, "utf8"))
+    const audSet = new Set(check.audiences)
+    const hasAllThree = audSet.has("maintainer") && audSet.has("contributor") && audSet.has("everyone")
+    return {
+      valid: check.valid && hasAllThree,
+      audiences: audSet.size,
+      reason: check.valid
+        ? hasAllThree
+          ? ".smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds"
+          : ".smithers/home.json does not cover all three audiences"
+        : (check.reason ?? ".smithers/home.json invalid")
+    }
+  })
 
   audits.push({
     id: "personalized-home-manifest",
     category: "release-cloud",
     title: "Personalized Home Manifest (3 Audiences)",
     description: ".smithers/home.json customizes the factory for maintainers, contributors, and viewers.",
-    status: homeValid ? "pass" : "fail",
-    score: homeValid ? 100 : 0,
+    status: homeMeasured.value.valid ? "pass" : "fail",
+    score: homeMeasured.value.valid ? 100 : 0,
     weight: 3,
-    displayValue: homeValid ? "3/3 audiences" : `${homeAudiences}/3 audiences`,
-    durationMs: 11,
-    evidence: [
-      homeValid
-        ? ".smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds"
-        : ".smithers/home.json incomplete or invalid"
-    ]
+    displayValue: homeMeasured.value.valid ? "3/3 audiences" : `${homeMeasured.value.audiences}/3 audiences`,
+    durationMs: homeMeasured.durationMs,
+    evidence: [homeMeasured.value.reason]
   })
 
-  let factoryTriggers = 0
-  if (existsSync(factoryPath)) {
+  const factoryMeasured = measure(() => {
+    const factoryPath = join(root, ".smithers", "factory.json")
+    if (!existsSync(factoryPath)) return 0
     try {
       const parsed = JSON.parse(readFileSync(factoryPath, "utf8")) as {
         apiVersion?: number
         contributes?: { triggers?: ReadonlyArray<unknown> }
       }
       if (parsed.apiVersion === 1 && Array.isArray(parsed.contributes?.triggers)) {
-        factoryTriggers = parsed.contributes.triggers.length
+        return parsed.contributes.triggers.length
       }
+      return 0
     } catch {
-      factoryTriggers = 0
+      return 0
     }
-  }
+  })
+  const factoryTriggers = factoryMeasured.value
 
   audits.push({
     id: "smithers-cloud-triggers",
@@ -544,7 +722,7 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     score: factoryTriggers >= 2 ? 100 : 0,
     weight: 3,
     displayValue: `${factoryTriggers} triggers`,
-    durationMs: 14,
+    durationMs: factoryMeasured.durationMs,
     evidence: [
       factoryTriggers >= 2
         ? `.smithers/factory.json declares ${factoryTriggers} v1 triggers (push, PR, manual, schedule)`
@@ -552,9 +730,14 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     ]
   })
 
-  const wfInventory = inventoryGithubWorkflows(root)
-  const mirrorReleaseExists = existsSync(join(root, ".github", "workflows", "smithers-mirror-release.yml"))
-  const untrustedPrExists = existsSync(join(root, ".github", "workflows", "untrusted-pr-check.yml"))
+  const wfMeasured = measure(() => ({
+    inv: inventoryGithubWorkflows(root),
+    mirrorReleaseExists: existsSync(join(root, ".github", "workflows", "smithers-mirror-release.yml")),
+    untrustedPrExists: existsSync(join(root, ".github", "workflows", "untrusted-pr-check.yml"))
+  }))
+  const wfInventory = wfMeasured.value.inv
+  const mirrorReleaseExists = wfMeasured.value.mirrorReleaseExists
+  const untrustedPrExists = wfMeasured.value.untrustedPrExists
   const workflowsHealthy = mirrorReleaseExists && untrustedPrExists && wfInventory.untrustedSafe
   audits.push({
     id: "github-mirror-release-pipeline",
@@ -567,16 +750,17 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     displayValue: workflowsHealthy
       ? `${wfInventory.workflows.length} workflows / ${wfInventory.totalJobs} jobs clean`
       : `${wfInventory.totalSecurityFindings} findings`,
-    durationMs: 14,
+    durationMs: wfMeasured.durationMs,
     evidence: [
       `Inventoried ${wfInventory.workflows.length} workflows (${wfInventory.totalJobs} jobs, ${wfInventory.totalSteps} steps)`,
-      mirrorReleaseExists ? ".github/workflows/smithers-mirror-release.yml armed on main" : "Missing mirror release workflow",
+      mirrorReleaseExists ? ".github/workflows/smithers-mirror-release.yml present" : "Missing mirror release workflow",
       untrustedPrExists ? ".github/workflows/untrusted-pr-check.yml isolates fork PRs" : "Missing untrusted PR workflow",
       ...wfInventory.workflows.flatMap((w) => w.securityFindings)
     ]
   })
 
-  const mcpExists = existsSync(join(root, "src", "mcp", "McpServer.ts"))
+  const mcpMeasured = measure(() => existsSync(join(root, "src", "mcp", "McpServer.ts")))
+  const mcpExists = mcpMeasured.value
   audits.push({
     id: "cloud-mcp-server",
     category: "release-cloud",
@@ -585,11 +769,11 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
     status: mcpExists ? "pass" : "fail",
     score: mcpExists ? 100 : 0,
     weight: 3,
-    displayValue: mcpExists ? "20 tools live" : "MCP missing",
-    durationMs: 16,
+    displayValue: mcpExists ? "Module present" : "MCP missing",
+    durationMs: mcpMeasured.durationMs,
     evidence: [
       mcpExists
-        ? "Streamable HTTP MCP server exposes 20 tools with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+        ? "src/mcp/McpServer.ts present with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
         : "Missing src/mcp/McpServer.ts"
     ]
   })
@@ -617,24 +801,24 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
   const warnings = audits.filter((a) => a.status === "warn").length
   const passed = audits.filter((a) => a.status === "pass").length
 
-  const checksPassed = overallScore >= releaseThreshold && failed === 0 && typecheckMeasured && typecheckOk
+  const checksPassed =
+    overallScore >= releaseThreshold &&
+    failed === 0 &&
+    typecheckMeasured &&
+    typecheckOk &&
+    testsMeasured &&
+    testsOk
   const gate = evaluateGate(options.execution, "lighthouse-backpressure", checksPassed)
   const gateReceipt = createGateReceipt(options.execution, gate, overallScore)
 
-  const waterfall: ReadonlyArray<TimingWaterfallStep> = [
-    { name: "typecheck (tsc --noEmit)", category: "correctness", baselineMs: 1840, cachedMs: 190, cacheHit: true },
-    { name: "unit & security suites", category: "correctness", baselineMs: 4120, cachedMs: 680, cacheHit: true },
-    { name: "smthrs-observe replay parity", category: "cache-speed", baselineMs: 12900, cachedMs: 2900, cacheHit: true },
-    { name: "trust & token adversarial checks", category: "security-trust", baselineMs: 920, cachedMs: 110, cacheHit: true },
-    { name: "wiki links & mythical history", category: "wiki-docs", baselineMs: 640, cachedMs: 42, cacheHit: true },
-    { name: "home.json & cloud triggers", category: "release-cloud", baselineMs: 380, cachedMs: 28, cacheHit: true }
-  ]
+  const waterfall: ReadonlyArray<TimingWaterfallStep> = options.waterfall ? [...options.waterfall] : []
 
-  return {
+  const report: BackpressureAuditReport = {
     schemaVersion: "1.0.0",
     generatedAt: new Date().toISOString(),
     repository: options.execution.repository,
     commitSha: options.execution.commitSha,
+    ...(options.isExample === true ? { isExample: true } : {}),
     execution: options.execution,
     policy,
     gate,
@@ -653,4 +837,5 @@ export function runBackpressureAudit(options: AuditRunOptions): BackpressureAudi
       releaseReady: gate.satisfied
     }
   }
+  return report
 }

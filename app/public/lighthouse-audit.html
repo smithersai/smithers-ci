@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
-<title>Smithers CI Backpressure Audit · smithersai/smithers-ci @ 46412bca49c3</title>
+<title>Smithers CI Backpressure Audit · smithersai/smithers-ci @ fd805f552596</title>
 <style>
 :root {
   --bg: #0b100e;
@@ -135,34 +135,34 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <div class="topbar">
       <h1>Smithers CI Backpressure Audit Report</h1>
       <div class="topbar-right">
-        <div class="meta">smithersai/smithers-ci @ 46412bca49c3 · 2026-11-27T13:19:01.805Z</div>
+        <div class="meta">smithersai/smithers-ci @ fd805f552596 · 2026-11-28T00:15:53.985Z</div>
         <label class="theme-toggle" for="lh-light-mode">Toggle Light / Dark</label>
       </div>
     </div>
 
-    <div class="banner banner-trusted">
-      TRUSTED SANDBOX: Verified execution eligible for shared cache writes and release gates
-      <span class="banner-sub">Actor: cfbox-gate-04 · Gate status: passed · Gate lighthouse-backpressure verified by trusted:sandbox (cfbox-gate-04).</span>
+    <div class="banner banner-untrusted">
+      UNTRUSTED COMMUNITY: Local or community audit run, isolated from shared cache writes and merge gates
+      <span class="banner-sub">Actor: local-snapshot · Gate status: untrusted_preview · Untrusted community execution is encouraged for fast local feedback, but cannot satisfy required merge or release gates or write to the shared cache.</span>
     </div>
 
     <section class="hero-panel">
       <div class="hero-top">
         <div class="overall-wrap">
           
-  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
-    <svg viewBox="0 0 100 100" width="112" height="112" role="img" aria-label="Overall score 100 out of 100">
+  <div class="lh-gauge" style="--gauge-color:var(--lh-avg)">
+    <svg viewBox="0 0 100 100" width="112" height="112" role="img" aria-label="Overall score 82 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
       <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
         stroke-dasharray="251.33"
-        stroke-dashoffset="0.00" />
-      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+        stroke-dashoffset="45.24" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">82</text>
     </svg>
     <div class="lh-gauge-label">Overall</div>
   </div>
           <div>
             <h2 style="margin:0 0 0.25rem;font-size:1.25rem;">Backpressure Health Score</h2>
-            <p class="muted">20/20 audits passed · 0 warnings · 0 failed</p>
-            <p class="muted">Release threshold: 90/100 · Release gate: <strong>SATISFIED</strong> · CSP: <code>script-src 'none'</code></p>
+            <p class="muted">14/20 audits passed · 6 warnings · 0 failed</p>
+            <p class="muted">Release threshold: 90/100 · Release gate: <strong>NOT SATISFIED</strong> · CSP: <code>script-src 'none'</code></p>
           </div>
         </div>
         <div class="legend">
@@ -175,13 +175,13 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
         
       <label class="gauge-link" for="filter-correctness" title="Filter to Correctness &amp; Determinism">
         
-  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
-    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Correctness score 100 out of 100">
+  <div class="lh-gauge" style="--gauge-color:var(--lh-avg)">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Correctness score 58 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
       <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
         stroke-dasharray="251.33"
-        stroke-dashoffset="0.00" />
-      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+        stroke-dashoffset="105.56" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">58</text>
     </svg>
     <div class="lh-gauge-label">Correctness</div>
   </div>
@@ -189,13 +189,13 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
 
       <label class="gauge-link" for="filter-cache-speed" title="Filter to Cache &amp; Speed">
         
-  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
-    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Cache &amp; Speed score 99 out of 100">
+  <div class="lh-gauge" style="--gauge-color:var(--lh-avg)">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Cache &amp; Speed score 85 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
       <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
         stroke-dasharray="251.33"
-        stroke-dashoffset="2.51" />
-      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">99</text>
+        stroke-dashoffset="37.70" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">85</text>
     </svg>
     <div class="lh-gauge-label">Cache &amp; Speed</div>
   </div>
@@ -217,13 +217,13 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
 
       <label class="gauge-link" for="filter-formal-fuzz" title="Filter to Formal &amp; Fuzz Assurance">
         
-  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
-    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Formal &amp; Fuzz score 98 out of 100">
+  <div class="lh-gauge" style="--gauge-color:var(--lh-avg)">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Formal &amp; Fuzz score 50 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
       <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
         stroke-dasharray="251.33"
-        stroke-dashoffset="5.03" />
-      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">98</text>
+        stroke-dashoffset="125.66" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">50</text>
     </svg>
     <div class="lh-gauge-label">Formal &amp; Fuzz</div>
   </div>
@@ -261,10 +261,10 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
 
     <div class="filter-bar" role="tablist" aria-label="Filter backpressure audit categories">
       <label class="filter-pill" for="filter-all">All (20)</label>
-      <label class="filter-pill" for="filter-correctness">Correctness (100)</label>
-      <label class="filter-pill" for="filter-cache-speed">Cache &amp; Speed (99)</label>
+      <label class="filter-pill" for="filter-correctness">Correctness (58)</label>
+      <label class="filter-pill" for="filter-cache-speed">Cache &amp; Speed (85)</label>
       <label class="filter-pill" for="filter-security-trust">Security (100)</label>
-      <label class="filter-pill" for="filter-formal-fuzz">Formal &amp; Fuzz (98)</label>
+      <label class="filter-pill" for="filter-formal-fuzz">Formal &amp; Fuzz (50)</label>
       <label class="filter-pill" for="filter-wiki-docs">Wiki &amp; Docs (100)</label>
       <label class="filter-pill" for="filter-release-cloud">Cloud Release (100)</label>
     </div>
@@ -274,66 +274,66 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <header class="category-head">
       <div class="category-title-wrap">
         
-  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
-    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Correctness score 100 out of 100">
+  <div class="lh-gauge" style="--gauge-color:var(--lh-avg)">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Correctness score 58 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
       <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
         stroke-dasharray="251.33"
-        stroke-dashoffset="0.00" />
-      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
+        stroke-dashoffset="105.56" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">58</text>
     </svg>
     <div class="lh-gauge-label">Correctness</div>
   </div>
         <div>
           <h2>Correctness &amp; Determinism</h2>
-          <p class="muted">4 passed · 0 warnings · 0 failed</p>
+          <p class="muted">1 passed · 3 warnings · 0 failed</p>
         </div>
       </div>
     </header>
     <div class="audit-list">
       
-  <details class="audit-row" >
+  <details class="audit-row" open>
     <summary>
-      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="dot dot-warn" aria-hidden="true"></span>
       <span class="audit-title">Strict TypeScript Typecheck</span>
-      <span class="audit-value">0 errors</span>
-      <span class="audit-score">100</span>
+      <span class="audit-value">Not measured</span>
+      <span class="audit-score">50</span>
     </summary>
     <div class="audit-body">
       <p>Every core module, worker route, and factory UI file compiles with strict mode enabled.</p>
-      <ul class="evidence-list"><li><code>tsconfig.json strict: true, noUncheckedIndexedAccess: true</code></li><li><code>tsc --noEmit exited 0</code></li></ul>
-      
-      <div class="audit-meta">ID: <code>ts-strict-typecheck</code> · Weight: 3 · 420ms</div>
+      <ul class="evidence-list"><li><code>tsconfig.json strict: true, noUncheckedIndexedAccess: true</code></li><li><code>Typecheck was not executed in this audit invocation; run `bun run typecheck` and supply explicit measured status to clear this check</code></li></ul>
+      <p class="remediation">Action: Run `bun run typecheck` and pass the observed result.</p>
+      <div class="audit-meta">ID: <code>ts-strict-typecheck</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
 
-  <details class="audit-row" >
+  <details class="audit-row" open>
     <summary>
-      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="dot dot-warn" aria-hidden="true"></span>
       <span class="audit-title">Unit, Security &amp; Protocol Suites</span>
-      <span class="audit-value">36/36 passed</span>
-      <span class="audit-score">100</span>
+      <span class="audit-value">Not measured</span>
+      <span class="audit-score">50</span>
     </summary>
     <div class="audit-body">
       <p>Verifies trust isolation, one-time tokens, CAS integrity, audit scoring, wiki, history, and MCP tools.</p>
-      <ul class="evidence-list"><li><code>Vitest suites covering trust, auth, object store, audit, wiki, mythical history, factory, and MCP</code></li><li><code>Observed 36 passing and 0 failing tests</code></li></ul>
-      
-      <div class="audit-meta">ID: <code>unit-integration-tests</code> · Weight: 4 · 760ms</div>
+      <ul class="evidence-list"><li><code>No test results were supplied to this audit invocation; run `bun run test` and supply observed counts to satisfy this check</code></li></ul>
+      <p class="remediation">Action: Run `bun run test` and pass the observed test counts.</p>
+      <div class="audit-meta">ID: <code>unit-integration-tests</code> · Weight: 4 · 0ms</div>
     </div>
   </details>
 
-  <details class="audit-row" >
+  <details class="audit-row" open>
     <summary>
-      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="dot dot-warn" aria-hidden="true"></span>
       <span class="audit-title">Kernel-Recorded Zero-Mismatch Parity</span>
-      <span class="audit-value">0 mismatches</span>
-      <span class="audit-score">100</span>
+      <span class="audit-value">Not measured</span>
+      <span class="audit-score">50</span>
     </summary>
     <div class="audit-body">
       <p>smthrs-observe seccomp-unotify recording guarantees cached verdicts match clean baseline execution.</p>
-      <ul class="evidence-list"><li><code>Measured on smithersai/smithers-ci-example (4 commits, 0 mismatches, 4.4x docs speedup)</code></li><li><code>Measured on smithersai/needlefish (25 jobs, 0 refusals, 0 mismatches)</code></li><li><code>Measured on elizaOS/eliza inside isolated Cloudflare Sandbox (0 mismatches, zero host clone)</code></li></ul>
-      
-      <div class="audit-meta">ID: <code>replay-zero-mismatch</code> · Weight: 3 · 310ms</div>
+      <ul class="evidence-list"><li><code>Replay parity was not measured in this audit invocation; run `bun run replay` and supply measured replay results</code></li></ul>
+      <p class="remediation">Action: Run incremental replay against this checkout and provide measured parity evidence.</p>
+      <div class="audit-meta">ID: <code>replay-zero-mismatch</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
 
@@ -348,7 +348,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>Enforces zero em dashes and zero internal codenames across public docs, wiki, and home.json.</p>
       <ul class="evidence-list"><li><code>Scanned 13 public docs and wiki files</code></li><li><code>0 em dashes found</code></li><li><code>0 internal codename leaks</code></li></ul>
       
-      <div class="audit-meta">ID: <code>public-copy-hygiene</code> · Weight: 2 · 45ms</div>
+      <div class="audit-meta">ID: <code>public-copy-hygiene</code> · Weight: 2 · 0ms</div>
     </div>
   </details>
     </div>
@@ -358,19 +358,19 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <header class="category-head">
       <div class="category-title-wrap">
         
-  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
-    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Cache &amp; Speed score 99 out of 100">
+  <div class="lh-gauge" style="--gauge-color:var(--lh-avg)">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Cache &amp; Speed score 85 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
       <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
         stroke-dasharray="251.33"
-        stroke-dashoffset="2.51" />
-      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">99</text>
+        stroke-dashoffset="37.70" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">85</text>
     </svg>
     <div class="lh-gauge-label">Cache &amp; Speed</div>
   </div>
         <div>
           <h2>Cache &amp; Speed</h2>
-          <p class="muted">3 passed · 0 warnings · 0 failed</p>
+          <p class="muted">2 passed · 1 warnings · 0 failed</p>
         </div>
       </div>
     </header>
@@ -385,9 +385,9 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </summary>
     <div class="audit-body">
       <p>Workspace declares build.smithers.sh with separate read and write credentials.</p>
-      <ul class="evidence-list"><li><code>.smithers/WORKSPACE.ts wires https://build.smithers.sh with split read/write secrets</code></li><li><code>Content-addressed /ac + /cas plus R2 artifacts bucket (http://artifacts.smithers.internal)</code></li></ul>
+      <ul class="evidence-list"><li><code>.smithers/WORKSPACE.ts declares https://build.smithers.sh with split read/write secret names</code></li><li><code>Content-addressed /ac + /cas plus R2 artifacts bucket (http://artifacts.smithers.internal)</code></li></ul>
       
-      <div class="audit-meta">ID: <code>shared-object-store</code> · Weight: 4 · 22ms</div>
+      <div class="audit-meta">ID: <code>shared-object-store</code> · Weight: 4 · 0ms</div>
     </div>
   </details>
 
@@ -402,22 +402,22 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>PACKAGE.ts stratifies fast-check, medium-check, and full-check targets for zero wasted reruns.</p>
       <ul class="evidence-list"><li><code>PACKAGE.ts declares fast-check, medium-check, full-check, audit, and docs targets</code></li></ul>
       
-      <div class="audit-meta">ID: <code>granular-incremental-targets</code> · Weight: 3 · 18ms</div>
+      <div class="audit-meta">ID: <code>granular-incremental-targets</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
 
-  <details class="audit-row" >
+  <details class="audit-row" open>
     <summary>
-      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="dot dot-warn" aria-hidden="true"></span>
       <span class="audit-title">Warm Cache Replay Speedup</span>
-      <span class="audit-value">4.4x docs / 1.3x code</span>
-      <span class="audit-score">96</span>
+      <span class="audit-value">Not measured</span>
+      <span class="audit-score">50</span>
     </summary>
     <div class="audit-body">
       <p>Measured end-to-end wall-time reduction from shared object store hits.</p>
-      <ul class="evidence-list"><li><code>Docs-only change: 12.9s baseline reduced to 2.9s cached (4/4 steps reused)</code></li><li><code>Multi-package replay: 53.3s baseline reduced to 40.6s normal mode</code></li></ul>
-      
-      <div class="audit-meta">ID: <code>warm-cache-speedup</code> · Weight: 3 · 140ms</div>
+      <ul class="evidence-list"><li><code>Warm cache replay speedup was not measured in this audit invocation</code></li></ul>
+      <p class="remediation">Action: Run cached replay on this checkout and pass measured timing evidence.</p>
+      <div class="audit-meta">ID: <code>warm-cache-speedup</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
     </div>
@@ -456,7 +456,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.</p>
       <ul class="evidence-list"><li><code>ExecutionTrust enforces allowCacheWrite: false for untrusted:community</code></li><li><code>SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers</code></li><li><code>Untrusted artifacts isolate under untrusted/&lt;actor&gt;/&lt;sha&gt;/</code></li></ul>
       
-      <div class="audit-meta">ID: <code>untrusted-cache-isolation</code> · Weight: 4 · 34ms</div>
+      <div class="audit-meta">ID: <code>untrusted-cache-isolation</code> · Weight: 4 · 0ms</div>
     </div>
   </details>
 
@@ -464,14 +464,14 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
       <span class="audit-title">Trusted-Only Merge &amp; Release Gates</span>
-      <span class="audit-value">TRUSTED SANDBOX</span>
+      <span class="audit-value">PREVIEW ONLY</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
-      <p>Only controlled Smithers sandboxes or verified maintainers can clear backpressure gates.</p>
-      <ul class="evidence-list"><li><code>Current execution tier: trusted:sandbox (cfbox-gate-04)</code></li><li><code>Gate satisfaction eligible: yes</code></li></ul>
+      <p>Only externally verified controlled Smithers sandboxes or maintainers can clear backpressure gates.</p>
+      <ul class="evidence-list"><li><code>Current execution tier: untrusted:community (local-snapshot)</code></li><li><code>Gate satisfaction eligible: no (untrusted local/community preview)</code></li></ul>
       
-      <div class="audit-meta">ID: <code>untrusted-gate-non-bypass</code> · Weight: 4 · 19ms</div>
+      <div class="audit-meta">ID: <code>untrusted-gate-non-bypass</code> · Weight: 4 · 0ms</div>
     </div>
   </details>
 
@@ -486,7 +486,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.</p>
       <ul class="evidence-list"><li><code>Raw tokens burn atomically on first redemption (already_redeemed on replay)</code></li><li><code>Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime</code></li><li><code>Mode-600 file output with symlink and permission checks</code></li></ul>
       
-      <div class="audit-meta">ID: <code>one-time-sandbox-auth</code> · Weight: 3 · 28ms</div>
+      <div class="audit-meta">ID: <code>one-time-sandbox-auth</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
 
@@ -501,7 +501,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.</p>
       <ul class="evidence-list"><li><code>Shared Object Store Cache Write (/ac, /cas) -&gt; ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache</code></li><li><code>Trusted Artifact Pointer Publication -&gt; McpServer destination scope check + ObjectStore untrusted-cas isolation</code></li><li><code>Merge / Release Gate Satisfaction -&gt; ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification</code></li><li><code>One-Time Sandbox Auth Token Minting &amp; PKCE Exchange -&gt; OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS</code></li><li><code>Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -&gt; ExecutionTrust.authorizeAction (default-deny) + McpServer guard</code></li></ul>
       
-      <div class="audit-meta">ID: <code>root-input-tracing</code> · Weight: 2 · 12ms</div>
+      <div class="audit-meta">ID: <code>root-input-tracing</code> · Weight: 2 · 0ms</div>
     </div>
   </details>
     </div>
@@ -511,51 +511,51 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <header class="category-head">
       <div class="category-title-wrap">
         
-  <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
-    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Formal &amp; Fuzz score 98 out of 100">
+  <div class="lh-gauge" style="--gauge-color:var(--lh-avg)">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Formal &amp; Fuzz score 50 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
       <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
         stroke-dasharray="251.33"
-        stroke-dashoffset="5.03" />
-      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">98</text>
+        stroke-dashoffset="125.66" />
+      <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">50</text>
     </svg>
     <div class="lh-gauge-label">Formal &amp; Fuzz</div>
   </div>
         <div>
           <h2>Formal &amp; Fuzz Assurance</h2>
-          <p class="muted">2 passed · 0 warnings · 0 failed</p>
+          <p class="muted">0 passed · 2 warnings · 0 failed</p>
         </div>
       </div>
     </header>
     <div class="audit-list">
       
-  <details class="audit-row" >
+  <details class="audit-row" open>
     <summary>
-      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="dot dot-warn" aria-hidden="true"></span>
       <span class="audit-title">Lean 4 Formal Verification Specs</span>
-      <span class="audit-value">387 theorems / 0 sorry</span>
-      <span class="audit-score">100</span>
+      <span class="audit-value">Not measured</span>
+      <span class="audit-score">50</span>
     </summary>
     <div class="audit-body">
       <p>Machine-checked theorems covering inventory, decomposition, sharding, apply, replay, and observer.</p>
-      <ul class="evidence-list"><li><code>6 Lean 4.32.0 packages across 51 .lean files</code></li><li><code>387 proven theorems with 0 sorry axioms</code></li><li><code>~55,685 differential fuzz queries cross-checked against live runtime</code></li></ul>
-      
-      <div class="audit-meta">ID: <code>lean4-formal-specs</code> · Weight: 4 · 95ms</div>
+      <ul class="evidence-list"><li><code>No Lean 4 verification results were measured in this audit invocation</code></li></ul>
+      <p class="remediation">Action: Run Lean 4 verification and pass observed theorem counts to measure this check.</p>
+      <div class="audit-meta">ID: <code>lean4-formal-specs</code> · Weight: 4 · 0ms</div>
     </div>
   </details>
 
-  <details class="audit-row" >
+  <details class="audit-row" open>
     <summary>
-      <span class="dot dot-pass" aria-hidden="true"></span>
+      <span class="dot dot-warn" aria-hidden="true"></span>
       <span class="audit-title">Adversarial Fuzz &amp; Property Suite</span>
-      <span class="audit-value">40+ fuzz suites</span>
-      <span class="audit-score">96</span>
+      <span class="audit-value">Suite present (not measured)</span>
+      <span class="audit-score">50</span>
     </summary>
     <div class="audit-body">
       <p>Fuzzes trust attestations, token replay, CAS corruption, XSS escaping, and Home.read bounds.</p>
-      <ul class="evidence-list"><li><code>65 historical bugs uncovered and 55 fixed across core packages/ci fuzz waves</code></li><li><code>Local adversarial tests verify zero XSS, zero cache poisoning, and zero token replay</code></li></ul>
-      
-      <div class="audit-meta">ID: <code>fuzz-property-assurance</code> · Weight: 3 · 180ms</div>
+      <ul class="evidence-list"><li><code>src/security/Adversarial.fuzz.test.ts is present in this checkout, but was not executed in this audit invocation</code></li></ul>
+      <p class="remediation">Action: Execute the adversarial fuzz suite and supply measured results.</p>
+      <div class="audit-meta">ID: <code>fuzz-property-assurance</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
     </div>
@@ -594,7 +594,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>Verified repository wiki pages with intact [[wikilinks]] and .smithers/coding-project.json.</p>
       <ul class="evidence-list"><li><code>9 markdown wiki pages discovered under wiki/</code></li><li><code>0 broken [[wikilinks]]</code></li><li><code>.smithers/coding-project.json catalog present</code></li></ul>
       
-      <div class="audit-meta">ID: <code>wiki-catalog-freshness</code> · Weight: 4 · 36ms</div>
+      <div class="audit-meta">ID: <code>wiki-catalog-freshness</code> · Weight: 4 · 1ms</div>
     </div>
   </details>
 
@@ -609,7 +609,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>Every wiki page leads with a diagram before prose.</p>
       <ul class="evidence-list"><li><code>9 of 9 wiki pages embed diagrams</code></li></ul>
       
-      <div class="audit-meta">ID: <code>visual-first-diagrams</code> · Weight: 2 · 15ms</div>
+      <div class="audit-meta">ID: <code>visual-first-diagrams</code> · Weight: 2 · 0ms</div>
     </div>
   </details>
 
@@ -617,14 +617,14 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
       <span class="audit-title">Mythical History Linear Stack</span>
-      <span class="audit-value">Linear &amp; verified</span>
+      <span class="audit-value">4 epics / 7 commits</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
       <p>Deterministic epic timeline folding real commits with evidence and tried notes.</p>
-      <ul class="evidence-list"><li><code>history/mythical-history.json verified against deterministic sequencer invariants</code></li></ul>
+      <ul class="evidence-list"><li><code>history/mythical-history.json verified (4 epics, 7 commits)</code></li></ul>
       
-      <div class="audit-meta">ID: <code>mythical-history-integrity</code> · Weight: 3 · 24ms</div>
+      <div class="audit-meta">ID: <code>mythical-history-integrity</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
     </div>
@@ -663,7 +663,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>.smithers/home.json customizes the factory for maintainers, contributors, and viewers.</p>
       <ul class="evidence-list"><li><code>.smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds</code></li></ul>
       
-      <div class="audit-meta">ID: <code>personalized-home-manifest</code> · Weight: 3 · 11ms</div>
+      <div class="audit-meta">ID: <code>personalized-home-manifest</code> · Weight: 3 · 1ms</div>
     </div>
   </details>
 
@@ -678,7 +678,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>.smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.</p>
       <ul class="evidence-list"><li><code>.smithers/factory.json declares 7 v1 triggers (push, PR, manual, schedule)</code></li></ul>
       
-      <div class="audit-meta">ID: <code>smithers-cloud-triggers</code> · Weight: 3 · 14ms</div>
+      <div class="audit-meta">ID: <code>smithers-cloud-triggers</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
 
@@ -691,9 +691,9 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     </summary>
     <div class="audit-body">
       <p>Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.</p>
-      <ul class="evidence-list"><li><code>Inventoried 2 workflows (4 jobs, 20 steps)</code></li><li><code>.github/workflows/smithers-mirror-release.yml armed on main</code></li><li><code>.github/workflows/untrusted-pr-check.yml isolates fork PRs</code></li></ul>
+      <ul class="evidence-list"><li><code>Inventoried 2 workflows (4 jobs, 20 steps)</code></li><li><code>.github/workflows/smithers-mirror-release.yml present</code></li><li><code>.github/workflows/untrusted-pr-check.yml isolates fork PRs</code></li></ul>
       
-      <div class="audit-meta">ID: <code>github-mirror-release-pipeline</code> · Weight: 3 · 14ms</div>
+      <div class="audit-meta">ID: <code>github-mirror-release-pipeline</code> · Weight: 3 · 1ms</div>
     </div>
   </details>
 
@@ -701,14 +701,14 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
       <span class="audit-title">Authenticated Cloud MCP Server</span>
-      <span class="audit-value">20 tools live</span>
+      <span class="audit-value">Module present</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
       <p>Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.</p>
-      <ul class="evidence-list"><li><code>Streamable HTTP MCP server exposes 20 tools with OAuth 2.1 + PKCE S256 discovery and one-time token exchange</code></li></ul>
+      <ul class="evidence-list"><li><code>src/mcp/McpServer.ts present with OAuth 2.1 + PKCE S256 discovery and one-time token exchange</code></li></ul>
       
-      <div class="audit-meta">ID: <code>cloud-mcp-server</code> · Weight: 3 · 16ms</div>
+      <div class="audit-meta">ID: <code>cloud-mcp-server</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
     </div>
@@ -733,81 +733,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
           <tbody>
             
       <tr>
-        <td><code>typecheck (tsc --noEmit)</code></td>
-        <td>
-          <div class="wf-track">
-            <div class="wf-bar wf-base" style="width:14.3%"></div>
-            <div class="wf-bar wf-cache" style="width:1.5%"></div>
-          </div>
-        </td>
-        <td class="num">1.84s</td>
-        <td class="num ok">0.19s</td>
-        <td class="num">9.7x</td>
-      </tr>
-
-      <tr>
-        <td><code>unit &amp; security suites</code></td>
-        <td>
-          <div class="wf-track">
-            <div class="wf-bar wf-base" style="width:31.9%"></div>
-            <div class="wf-bar wf-cache" style="width:5.3%"></div>
-          </div>
-        </td>
-        <td class="num">4.12s</td>
-        <td class="num ok">0.68s</td>
-        <td class="num">6.1x</td>
-      </tr>
-
-      <tr>
-        <td><code>smthrs-observe replay parity</code></td>
-        <td>
-          <div class="wf-track">
-            <div class="wf-bar wf-base" style="width:100.0%"></div>
-            <div class="wf-bar wf-cache" style="width:22.5%"></div>
-          </div>
-        </td>
-        <td class="num">12.90s</td>
-        <td class="num ok">2.90s</td>
-        <td class="num">4.4x</td>
-      </tr>
-
-      <tr>
-        <td><code>trust &amp; token adversarial checks</code></td>
-        <td>
-          <div class="wf-track">
-            <div class="wf-bar wf-base" style="width:7.1%"></div>
-            <div class="wf-bar wf-cache" style="width:0.9%"></div>
-          </div>
-        </td>
-        <td class="num">0.92s</td>
-        <td class="num ok">0.11s</td>
-        <td class="num">8.4x</td>
-      </tr>
-
-      <tr>
-        <td><code>wiki links &amp; mythical history</code></td>
-        <td>
-          <div class="wf-track">
-            <div class="wf-bar wf-base" style="width:5.0%"></div>
-            <div class="wf-bar wf-cache" style="width:0.3%"></div>
-          </div>
-        </td>
-        <td class="num">0.64s</td>
-        <td class="num ok">0.04s</td>
-        <td class="num">15.2x</td>
-      </tr>
-
-      <tr>
-        <td><code>home.json &amp; cloud triggers</code></td>
-        <td>
-          <div class="wf-track">
-            <div class="wf-bar wf-base" style="width:2.9%"></div>
-            <div class="wf-bar wf-cache" style="width:0.2%"></div>
-          </div>
-        </td>
-        <td class="num">0.38s</td>
-        <td class="num ok">0.03s</td>
-        <td class="num">13.6x</td>
+        <td colspan="5" class="muted">No timing waterfall measurements were recorded for this audit run.</td>
       </tr>
           </tbody>
         </table>

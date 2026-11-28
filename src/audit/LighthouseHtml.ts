@@ -90,12 +90,15 @@ function renderCategorySection(cat: AuditCategorySummary): string {
  * category filter tabs, dark/light theme switcher, and print styles.
  */
 export function renderLighthouseHtml(report: BackpressureAuditReport): string {
-  const shortSha = report.commitSha.slice(0, 12)
+  const shortSha = /^[0-9a-f]{40}$/i.test(report.commitSha) ? report.commitSha.slice(0, 12) : report.commitSha
   const trusted = report.execution.trusted
-  const bannerClass = trusted ? "banner-trusted" : "banner-untrusted"
-  const bannerHeadline = trusted
-    ? `${report.policy.provenanceBadge}: Verified execution eligible for shared cache writes and release gates`
-    : `${report.policy.provenanceBadge}: Community run encouraged for fast feedback, isolated from shared cache writes and merge gates`
+  const isExample = report.isExample === true
+  const bannerClass = isExample ? "banner-untrusted" : trusted ? "banner-trusted" : "banner-untrusted"
+  const bannerHeadline = isExample
+    ? `EXAMPLE REPORT (${report.policy.provenanceBadge}): Illustrative example fixture, not live checkout verification`
+    : trusted
+      ? `${report.policy.provenanceBadge}: Externally verified execution eligible for shared cache writes and release gates`
+      : `${report.policy.provenanceBadge}: Local or community audit run, isolated from shared cache writes and merge gates`
 
   const topGauges = report.categories
     .map(
@@ -132,7 +135,12 @@ export function renderLighthouseHtml(report: BackpressureAuditReport): string {
     .join("\n")
 
   const maxBaseline = Math.max(...report.waterfall.map((s) => s.baselineMs), 1)
-  const waterfallRows = report.waterfall
+  const waterfallRows = report.waterfall.length === 0
+    ? `
+      <tr>
+        <td colspan="5" class="muted">No timing waterfall measurements were recorded for this audit run.</td>
+      </tr>`
+    : report.waterfall
     .map((step) => {
       const basePct = ((step.baselineMs / maxBaseline) * 100).toFixed(1)
       const cachePct = ((step.cachedMs / maxBaseline) * 100).toFixed(1)
