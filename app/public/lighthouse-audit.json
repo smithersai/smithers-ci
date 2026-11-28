@@ -1,20 +1,21 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-11-28T00:15:53.985Z",
+  "generatedAt": "2026-11-28T00:23:32.661Z",
   "repository": "smithersai/smithers-ci",
-  "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+  "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+  "checkoutState": "clean",
   "execution": {
     "effectiveTier": "untrusted:community",
     "claimedTier": "untrusted:community",
     "callerKind": "person",
     "actor": "local-snapshot",
     "repository": "smithersai/smithers-ci",
-    "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+    "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
     "sandboxId": null,
     "trusted": false,
     "downgraded": false,
     "downgradeReason": null,
-    "verifiedAt": "2026-11-28T00:15:53.979Z"
+    "verifiedAt": "2026-11-28T00:23:32.657Z"
   },
   "policy": {
     "allowExecution": true,
@@ -23,7 +24,7 @@
     "allowTrustedArtifactWrite": false,
     "allowUntrustedArtifactWrite": true,
     "canSatisfyGates": false,
-    "artifactNamespace": "untrusted/local-snapshot/fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+    "artifactNamespace": "untrusted/local-snapshot/1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
     "provenanceBadge": "UNTRUSTED COMMUNITY"
   },
   "gate": {
@@ -36,14 +37,14 @@
   },
   "gateReceipt": {
     "repository": "smithersai/smithers-ci",
-    "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+    "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
     "gate": "lighthouse-backpressure",
     "score": 82,
     "passed": false,
     "satisfied": false,
     "trustTier": "untrusted:community",
     "actor": "local-snapshot",
-    "verifiedAt": "2026-11-28T00:15:53.979Z"
+    "verifiedAt": "2026-11-28T00:23:32.657Z"
   },
   "overallScore": 82,
   "overallRating": "average",
@@ -180,8 +181,8 @@
     },
     {
       "id": "security-trust",
-      "title": "Security & Trust Isolation",
-      "shortTitle": "Security",
+      "title": "Trust Source Inventory & Execution Policy",
+      "shortTitle": "Trust inventory",
       "score": 100,
       "rating": "pass",
       "passedCount": 4,
@@ -191,24 +192,23 @@
         {
           "id": "untrusted-cache-isolation",
           "category": "security-trust",
-          "title": "Untrusted Cache-Poisoning Immunity",
-          "description": "Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.",
+          "title": "Cache Isolation Source Files",
+          "description": "Checks for the trust and object-store source files.",
           "status": "pass",
           "score": 100,
           "weight": 4,
-          "displayValue": "Hard isolated",
+          "displayValue": "Modules present",
           "durationMs": 0,
           "evidence": [
-            "ExecutionTrust enforces allowCacheWrite: false for untrusted:community",
-            "SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers",
-            "Untrusted artifacts isolate under untrusted/<actor>/<sha>/"
+            "Trust source file: present",
+            "Object store source file: present"
           ]
         },
         {
           "id": "untrusted-gate-non-bypass",
           "category": "security-trust",
-          "title": "Trusted-Only Merge & Release Gates",
-          "description": "Only externally verified controlled Smithers sandboxes or maintainers can clear backpressure gates.",
+          "title": "Current Execution Policy",
+          "description": "Reports gate eligibility for this execution.",
           "status": "pass",
           "score": 100,
           "weight": 4,
@@ -222,28 +222,26 @@
         {
           "id": "one-time-sandbox-auth",
           "category": "security-trust",
-          "title": "One-Time-Use Sandbox & Agent Auth",
-          "description": "Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.",
+          "title": "Token Implementation File",
+          "description": "Checks for the one-time token source file.",
           "status": "pass",
           "score": 100,
           "weight": 3,
-          "displayValue": "Single-use + PKCE",
+          "displayValue": "Module present",
           "durationMs": 0,
           "evidence": [
-            "Raw tokens burn atomically on first redemption (already_redeemed on replay)",
-            "Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime",
-            "Mode-600 file output with symlink and permission checks"
+            "src/auth/OneTimeToken.ts present"
           ]
         },
         {
           "id": "root-input-tracing",
           "category": "security-trust",
-          "title": "Root-Input-Tracing Security Coverage",
-          "description": "Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.",
+          "title": "Documented Trust Boundaries",
+          "description": "Counts entries in the reference table.",
           "status": "pass",
           "score": 100,
           "weight": 2,
-          "displayValue": "5 boundaries traced",
+          "displayValue": "5 boundaries documented",
           "durationMs": 0,
           "evidence": [
             "Shared Object Store Cache Write (/ac, /cas) -> ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
@@ -316,7 +314,7 @@
           "score": 100,
           "weight": 4,
           "displayValue": "9 pages / 0 broken",
-          "durationMs": 1,
+          "durationMs": 0,
           "evidence": [
             "9 markdown wiki pages discovered under wiki/",
             "0 broken [[wikilinks]]",
@@ -372,7 +370,7 @@
           "score": 100,
           "weight": 3,
           "displayValue": "3/3 audiences",
-          "durationMs": 1,
+          "durationMs": 0,
           "evidence": [
             ".smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds"
           ]
@@ -381,44 +379,44 @@
           "id": "smithers-cloud-triggers",
           "category": "release-cloud",
           "title": "Smithers Cloud Factory & Flows",
-          "description": ".smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.",
+          "description": ".smithers/factory.json declares factory triggers.",
           "status": "pass",
           "score": 100,
           "weight": 3,
           "displayValue": "7 triggers",
           "durationMs": 0,
           "evidence": [
-            ".smithers/factory.json declares 7 v1 triggers (push, PR, manual, schedule)"
+            ".smithers/factory.json declares 7 triggers"
           ]
         },
         {
           "id": "github-mirror-release-pipeline",
           "category": "release-cloud",
-          "title": "Auto-Release & Docs Publish on Mirror Merge",
-          "description": "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
+          "title": "Mirror Workflow Inventory",
+          "description": "Inventories workflow files and summarizes static checks.",
           "status": "pass",
           "score": 100,
           "weight": 3,
-          "displayValue": "2 workflows / 4 jobs clean",
+          "displayValue": "2 workflows / 4 jobs, no static findings",
           "durationMs": 1,
           "evidence": [
             "Inventoried 2 workflows (4 jobs, 20 steps)",
             ".github/workflows/smithers-mirror-release.yml present",
-            ".github/workflows/untrusted-pr-check.yml isolates fork PRs"
+            ".github/workflows/untrusted-pr-check.yml present"
           ]
         },
         {
           "id": "cloud-mcp-server",
           "category": "release-cloud",
-          "title": "Authenticated Cloud MCP Server",
-          "description": "Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.",
+          "title": "MCP Server Source File",
+          "description": "Checks for the MCP server source file.",
           "status": "pass",
           "score": 100,
           "weight": 3,
           "displayValue": "Module present",
           "durationMs": 0,
           "evidence": [
-            "src/mcp/McpServer.ts present with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+            "src/mcp/McpServer.ts present"
           ]
         }
       ]

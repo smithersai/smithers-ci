@@ -35,9 +35,9 @@ export interface FactorySnapshot {
 }
 
 export const FACTORY_SNAPSHOT: FactorySnapshot = {
-  "generatedAt": "2026-11-28T00:15:53.979Z",
+  "generatedAt": "2026-11-28T00:23:32.657Z",
   "repository": "smithersai/smithers-ci",
-  "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+  "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
   "cloudUrl": "https://smithers.sh/smithersai/smithers-ci",
   "githubUrl": "https://github.com/smithersai/smithers-ci",
   "docsUrl": "https://ci.smithers.sh",
@@ -45,21 +45,22 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   "objectStoreEndpoint": "https://build.smithers.sh",
   "audit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-28T00:15:53.985Z",
+    "generatedAt": "2026-11-28T00:23:32.661Z",
     "repository": "smithersai/smithers-ci",
-    "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+    "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+    "checkoutState": "clean",
     "execution": {
       "effectiveTier": "untrusted:community",
       "claimedTier": "untrusted:community",
       "callerKind": "person",
       "actor": "local-snapshot",
       "repository": "smithersai/smithers-ci",
-      "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+      "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
       "sandboxId": null,
       "trusted": false,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-28T00:15:53.979Z"
+      "verifiedAt": "2026-11-28T00:23:32.657Z"
     },
     "policy": {
       "allowExecution": true,
@@ -68,7 +69,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "allowTrustedArtifactWrite": false,
       "allowUntrustedArtifactWrite": true,
       "canSatisfyGates": false,
-      "artifactNamespace": "untrusted/local-snapshot/fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+      "artifactNamespace": "untrusted/local-snapshot/1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
       "provenanceBadge": "UNTRUSTED COMMUNITY"
     },
     "gate": {
@@ -81,14 +82,14 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
     },
     "gateReceipt": {
       "repository": "smithersai/smithers-ci",
-      "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+      "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
       "gate": "lighthouse-backpressure",
       "score": 82,
       "passed": false,
       "satisfied": false,
       "trustTier": "untrusted:community",
       "actor": "local-snapshot",
-      "verifiedAt": "2026-11-28T00:15:53.979Z"
+      "verifiedAt": "2026-11-28T00:23:32.657Z"
     },
     "overallScore": 82,
     "overallRating": "average",
@@ -225,8 +226,8 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       },
       {
         "id": "security-trust",
-        "title": "Security & Trust Isolation",
-        "shortTitle": "Security",
+        "title": "Trust Source Inventory & Execution Policy",
+        "shortTitle": "Trust inventory",
         "score": 100,
         "rating": "pass",
         "passedCount": 4,
@@ -236,24 +237,23 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
           {
             "id": "untrusted-cache-isolation",
             "category": "security-trust",
-            "title": "Untrusted Cache-Poisoning Immunity",
-            "description": "Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.",
+            "title": "Cache Isolation Source Files",
+            "description": "Checks for the trust and object-store source files.",
             "status": "pass",
             "score": 100,
             "weight": 4,
-            "displayValue": "Hard isolated",
+            "displayValue": "Modules present",
             "durationMs": 0,
             "evidence": [
-              "ExecutionTrust enforces allowCacheWrite: false for untrusted:community",
-              "SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers",
-              "Untrusted artifacts isolate under untrusted/<actor>/<sha>/"
+              "Trust source file: present",
+              "Object store source file: present"
             ]
           },
           {
             "id": "untrusted-gate-non-bypass",
             "category": "security-trust",
-            "title": "Trusted-Only Merge & Release Gates",
-            "description": "Only externally verified controlled Smithers sandboxes or maintainers can clear backpressure gates.",
+            "title": "Current Execution Policy",
+            "description": "Reports gate eligibility for this execution.",
             "status": "pass",
             "score": 100,
             "weight": 4,
@@ -267,28 +267,26 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
           {
             "id": "one-time-sandbox-auth",
             "category": "security-trust",
-            "title": "One-Time-Use Sandbox & Agent Auth",
-            "description": "Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.",
+            "title": "Token Implementation File",
+            "description": "Checks for the one-time token source file.",
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "Single-use + PKCE",
+            "displayValue": "Module present",
             "durationMs": 0,
             "evidence": [
-              "Raw tokens burn atomically on first redemption (already_redeemed on replay)",
-              "Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime",
-              "Mode-600 file output with symlink and permission checks"
+              "src/auth/OneTimeToken.ts present"
             ]
           },
           {
             "id": "root-input-tracing",
             "category": "security-trust",
-            "title": "Root-Input-Tracing Security Coverage",
-            "description": "Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.",
+            "title": "Documented Trust Boundaries",
+            "description": "Counts entries in the reference table.",
             "status": "pass",
             "score": 100,
             "weight": 2,
-            "displayValue": "5 boundaries traced",
+            "displayValue": "5 boundaries documented",
             "durationMs": 0,
             "evidence": [
               "Shared Object Store Cache Write (/ac, /cas) -> ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
@@ -361,7 +359,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "score": 100,
             "weight": 4,
             "displayValue": "9 pages / 0 broken",
-            "durationMs": 1,
+            "durationMs": 0,
             "evidence": [
               "9 markdown wiki pages discovered under wiki/",
               "0 broken [[wikilinks]]",
@@ -417,7 +415,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "score": 100,
             "weight": 3,
             "displayValue": "3/3 audiences",
-            "durationMs": 1,
+            "durationMs": 0,
             "evidence": [
               ".smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds"
             ]
@@ -426,44 +424,44 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "id": "smithers-cloud-triggers",
             "category": "release-cloud",
             "title": "Smithers Cloud Factory & Flows",
-            "description": ".smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.",
+            "description": ".smithers/factory.json declares factory triggers.",
             "status": "pass",
             "score": 100,
             "weight": 3,
             "displayValue": "7 triggers",
             "durationMs": 0,
             "evidence": [
-              ".smithers/factory.json declares 7 v1 triggers (push, PR, manual, schedule)"
+              ".smithers/factory.json declares 7 triggers"
             ]
           },
           {
             "id": "github-mirror-release-pipeline",
             "category": "release-cloud",
-            "title": "Auto-Release & Docs Publish on Mirror Merge",
-            "description": "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
+            "title": "Mirror Workflow Inventory",
+            "description": "Inventories workflow files and summarizes static checks.",
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "2 workflows / 4 jobs clean",
+            "displayValue": "2 workflows / 4 jobs, no static findings",
             "durationMs": 1,
             "evidence": [
               "Inventoried 2 workflows (4 jobs, 20 steps)",
               ".github/workflows/smithers-mirror-release.yml present",
-              ".github/workflows/untrusted-pr-check.yml isolates fork PRs"
+              ".github/workflows/untrusted-pr-check.yml present"
             ]
           },
           {
             "id": "cloud-mcp-server",
             "category": "release-cloud",
-            "title": "Authenticated Cloud MCP Server",
-            "description": "Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.",
+            "title": "MCP Server Source File",
+            "description": "Checks for the MCP server source file.",
             "status": "pass",
             "score": 100,
             "weight": 3,
             "displayValue": "Module present",
             "durationMs": 0,
             "evidence": [
-              "src/mcp/McpServer.ts present with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+              "src/mcp/McpServer.ts present"
             ]
           }
         ]
@@ -518,21 +516,22 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   },
   "untrustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-28T00:15:53.985Z",
+    "generatedAt": "2026-11-28T00:23:32.661Z",
     "repository": "smithersai/smithers-ci",
-    "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+    "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+    "checkoutState": "clean",
     "execution": {
       "effectiveTier": "untrusted:community",
       "claimedTier": "untrusted:community",
       "callerKind": "person",
       "actor": "local-snapshot",
       "repository": "smithersai/smithers-ci",
-      "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+      "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
       "sandboxId": null,
       "trusted": false,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-28T00:15:53.979Z"
+      "verifiedAt": "2026-11-28T00:23:32.657Z"
     },
     "policy": {
       "allowExecution": true,
@@ -541,7 +540,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "allowTrustedArtifactWrite": false,
       "allowUntrustedArtifactWrite": true,
       "canSatisfyGates": false,
-      "artifactNamespace": "untrusted/local-snapshot/fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+      "artifactNamespace": "untrusted/local-snapshot/1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
       "provenanceBadge": "UNTRUSTED COMMUNITY"
     },
     "gate": {
@@ -554,14 +553,14 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
     },
     "gateReceipt": {
       "repository": "smithersai/smithers-ci",
-      "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
+      "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
       "gate": "lighthouse-backpressure",
       "score": 82,
       "passed": false,
       "satisfied": false,
       "trustTier": "untrusted:community",
       "actor": "local-snapshot",
-      "verifiedAt": "2026-11-28T00:15:53.979Z"
+      "verifiedAt": "2026-11-28T00:23:32.657Z"
     },
     "overallScore": 82,
     "overallRating": "average",
@@ -698,8 +697,8 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       },
       {
         "id": "security-trust",
-        "title": "Security & Trust Isolation",
-        "shortTitle": "Security",
+        "title": "Trust Source Inventory & Execution Policy",
+        "shortTitle": "Trust inventory",
         "score": 100,
         "rating": "pass",
         "passedCount": 4,
@@ -709,24 +708,23 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
           {
             "id": "untrusted-cache-isolation",
             "category": "security-trust",
-            "title": "Untrusted Cache-Poisoning Immunity",
-            "description": "Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.",
+            "title": "Cache Isolation Source Files",
+            "description": "Checks for the trust and object-store source files.",
             "status": "pass",
             "score": 100,
             "weight": 4,
-            "displayValue": "Hard isolated",
+            "displayValue": "Modules present",
             "durationMs": 0,
             "evidence": [
-              "ExecutionTrust enforces allowCacheWrite: false for untrusted:community",
-              "SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers",
-              "Untrusted artifacts isolate under untrusted/<actor>/<sha>/"
+              "Trust source file: present",
+              "Object store source file: present"
             ]
           },
           {
             "id": "untrusted-gate-non-bypass",
             "category": "security-trust",
-            "title": "Trusted-Only Merge & Release Gates",
-            "description": "Only externally verified controlled Smithers sandboxes or maintainers can clear backpressure gates.",
+            "title": "Current Execution Policy",
+            "description": "Reports gate eligibility for this execution.",
             "status": "pass",
             "score": 100,
             "weight": 4,
@@ -740,28 +738,26 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
           {
             "id": "one-time-sandbox-auth",
             "category": "security-trust",
-            "title": "One-Time-Use Sandbox & Agent Auth",
-            "description": "Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.",
+            "title": "Token Implementation File",
+            "description": "Checks for the one-time token source file.",
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "Single-use + PKCE",
+            "displayValue": "Module present",
             "durationMs": 0,
             "evidence": [
-              "Raw tokens burn atomically on first redemption (already_redeemed on replay)",
-              "Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime",
-              "Mode-600 file output with symlink and permission checks"
+              "src/auth/OneTimeToken.ts present"
             ]
           },
           {
             "id": "root-input-tracing",
             "category": "security-trust",
-            "title": "Root-Input-Tracing Security Coverage",
-            "description": "Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.",
+            "title": "Documented Trust Boundaries",
+            "description": "Counts entries in the reference table.",
             "status": "pass",
             "score": 100,
             "weight": 2,
-            "displayValue": "5 boundaries traced",
+            "displayValue": "5 boundaries documented",
             "durationMs": 0,
             "evidence": [
               "Shared Object Store Cache Write (/ac, /cas) -> ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
@@ -834,7 +830,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "score": 100,
             "weight": 4,
             "displayValue": "9 pages / 0 broken",
-            "durationMs": 1,
+            "durationMs": 0,
             "evidence": [
               "9 markdown wiki pages discovered under wiki/",
               "0 broken [[wikilinks]]",
@@ -890,7 +886,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "score": 100,
             "weight": 3,
             "displayValue": "3/3 audiences",
-            "durationMs": 1,
+            "durationMs": 0,
             "evidence": [
               ".smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds"
             ]
@@ -899,44 +895,44 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "id": "smithers-cloud-triggers",
             "category": "release-cloud",
             "title": "Smithers Cloud Factory & Flows",
-            "description": ".smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.",
+            "description": ".smithers/factory.json declares factory triggers.",
             "status": "pass",
             "score": 100,
             "weight": 3,
             "displayValue": "7 triggers",
             "durationMs": 0,
             "evidence": [
-              ".smithers/factory.json declares 7 v1 triggers (push, PR, manual, schedule)"
+              ".smithers/factory.json declares 7 triggers"
             ]
           },
           {
             "id": "github-mirror-release-pipeline",
             "category": "release-cloud",
-            "title": "Auto-Release & Docs Publish on Mirror Merge",
-            "description": "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
+            "title": "Mirror Workflow Inventory",
+            "description": "Inventories workflow files and summarizes static checks.",
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "2 workflows / 4 jobs clean",
+            "displayValue": "2 workflows / 4 jobs, no static findings",
             "durationMs": 1,
             "evidence": [
               "Inventoried 2 workflows (4 jobs, 20 steps)",
               ".github/workflows/smithers-mirror-release.yml present",
-              ".github/workflows/untrusted-pr-check.yml isolates fork PRs"
+              ".github/workflows/untrusted-pr-check.yml present"
             ]
           },
           {
             "id": "cloud-mcp-server",
             "category": "release-cloud",
-            "title": "Authenticated Cloud MCP Server",
-            "description": "Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.",
+            "title": "MCP Server Source File",
+            "description": "Checks for the MCP server source file.",
             "status": "pass",
             "score": 100,
             "weight": 3,
             "displayValue": "Module present",
             "durationMs": 0,
             "evidence": [
-              "src/mcp/McpServer.ts present with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+              "src/mcp/McpServer.ts present"
             ]
           }
         ]
@@ -991,7 +987,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
   },
   "exampleTrustedAudit": {
     "schemaVersion": "1.0.0",
-    "generatedAt": "2026-11-28T00:15:53.987Z",
+    "generatedAt": "2026-11-28T00:23:32.662Z",
     "repository": "smithersai/smithers-ci",
     "commitSha": "46412bca49c3a0f1234567890abcdef123456789",
     "isExample": true,
@@ -1006,8 +1002,8 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "trusted": true,
       "downgraded": false,
       "downgradeReason": null,
-      "verifiedAt": "2026-11-28T00:15:53.979Z",
-      "expiresAt": "2026-11-28T00:25:53.979Z"
+      "verifiedAt": "2026-11-28T00:23:32.657Z",
+      "expiresAt": "2026-11-28T00:33:32.657Z"
     },
     "policy": {
       "allowExecution": true,
@@ -1036,7 +1032,7 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       "satisfied": true,
       "trustTier": "trusted:sandbox",
       "actor": "cfbox-example-01",
-      "verifiedAt": "2026-11-28T00:15:53.979Z"
+      "verifiedAt": "2026-11-28T00:23:32.657Z"
     },
     "overallScore": 100,
     "overallRating": "pass",
@@ -1170,8 +1166,8 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
       },
       {
         "id": "security-trust",
-        "title": "Security & Trust Isolation",
-        "shortTitle": "Security",
+        "title": "Trust Source Inventory & Execution Policy",
+        "shortTitle": "Trust inventory",
         "score": 100,
         "rating": "pass",
         "passedCount": 4,
@@ -1181,24 +1177,23 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
           {
             "id": "untrusted-cache-isolation",
             "category": "security-trust",
-            "title": "Untrusted Cache-Poisoning Immunity",
-            "description": "Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.",
+            "title": "Cache Isolation Source Files",
+            "description": "Checks for the trust and object-store source files.",
             "status": "pass",
             "score": 100,
             "weight": 4,
-            "displayValue": "Hard isolated",
+            "displayValue": "Modules present",
             "durationMs": 0,
             "evidence": [
-              "ExecutionTrust enforces allowCacheWrite: false for untrusted:community",
-              "SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers",
-              "Untrusted artifacts isolate under untrusted/<actor>/<sha>/"
+              "Trust source file: present",
+              "Object store source file: present"
             ]
           },
           {
             "id": "untrusted-gate-non-bypass",
             "category": "security-trust",
-            "title": "Trusted-Only Merge & Release Gates",
-            "description": "Only externally verified controlled Smithers sandboxes or maintainers can clear backpressure gates.",
+            "title": "Current Execution Policy",
+            "description": "Reports gate eligibility for this execution.",
             "status": "pass",
             "score": 100,
             "weight": 4,
@@ -1212,28 +1207,26 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
           {
             "id": "one-time-sandbox-auth",
             "category": "security-trust",
-            "title": "One-Time-Use Sandbox & Agent Auth",
-            "description": "Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.",
+            "title": "Token Implementation File",
+            "description": "Checks for the one-time token source file.",
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "Single-use + PKCE",
+            "displayValue": "Module present",
             "durationMs": 0,
             "evidence": [
-              "Raw tokens burn atomically on first redemption (already_redeemed on replay)",
-              "Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime",
-              "Mode-600 file output with symlink and permission checks"
+              "src/auth/OneTimeToken.ts present"
             ]
           },
           {
             "id": "root-input-tracing",
             "category": "security-trust",
-            "title": "Root-Input-Tracing Security Coverage",
-            "description": "Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.",
+            "title": "Documented Trust Boundaries",
+            "description": "Counts entries in the reference table.",
             "status": "pass",
             "score": 100,
             "weight": 2,
-            "displayValue": "5 boundaries traced",
+            "displayValue": "5 boundaries documented",
             "durationMs": 0,
             "evidence": [
               "Shared Object Store Cache Write (/ac, /cas) -> ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache",
@@ -1372,44 +1365,44 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
             "id": "smithers-cloud-triggers",
             "category": "release-cloud",
             "title": "Smithers Cloud Factory & Flows",
-            "description": ".smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.",
+            "description": ".smithers/factory.json declares factory triggers.",
             "status": "pass",
             "score": 100,
             "weight": 3,
             "displayValue": "7 triggers",
             "durationMs": 0,
             "evidence": [
-              ".smithers/factory.json declares 7 v1 triggers (push, PR, manual, schedule)"
+              ".smithers/factory.json declares 7 triggers"
             ]
           },
           {
             "id": "github-mirror-release-pipeline",
             "category": "release-cloud",
-            "title": "Auto-Release & Docs Publish on Mirror Merge",
-            "description": "Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.",
+            "title": "Mirror Workflow Inventory",
+            "description": "Inventories workflow files and summarizes static checks.",
             "status": "pass",
             "score": 100,
             "weight": 3,
-            "displayValue": "2 workflows / 4 jobs clean",
-            "durationMs": 1,
+            "displayValue": "2 workflows / 4 jobs, no static findings",
+            "durationMs": 0,
             "evidence": [
               "Inventoried 2 workflows (4 jobs, 20 steps)",
               ".github/workflows/smithers-mirror-release.yml present",
-              ".github/workflows/untrusted-pr-check.yml isolates fork PRs"
+              ".github/workflows/untrusted-pr-check.yml present"
             ]
           },
           {
             "id": "cloud-mcp-server",
             "category": "release-cloud",
-            "title": "Authenticated Cloud MCP Server",
-            "description": "Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.",
+            "title": "MCP Server Source File",
+            "description": "Checks for the MCP server source file.",
             "status": "pass",
             "score": 100,
             "weight": 3,
             "displayValue": "Module present",
             "durationMs": 0,
             "evidence": [
-              "src/mcp/McpServer.ts present with OAuth 2.1 + PKCE S256 discovery and one-time token exchange"
+              "src/mcp/McpServer.ts present"
             ]
           }
         ]
@@ -1513,36 +1506,36 @@ export const FACTORY_SNAPSHOT: FactorySnapshot = {
     "actionCacheEntries": 0,
     "trustedArtifacts": 0,
     "untrustedArtifacts": 2,
-    "totalBytes": 60240
+    "totalBytes": 58479
   },
   "artifacts": [
     {
       "name": "lighthouse-audit.html",
-      "namespace": "untrusted/local-snapshot/fd805f5525964d7a8ad9abebc71c5d24de2f9824",
-      "key": "untrusted/local-snapshot/fd805f5525964d7a8ad9abebc71c5d24de2f9824/lighthouse-audit.html",
-      "sha256": "ef1fbbb249136243dea29c805217496da1e7d92cd4aab8c323e85468a60a918e",
-      "bytes": 41464,
+      "namespace": "untrusted/local-snapshot/1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+      "key": "untrusted/local-snapshot/1dd29e1c6202eb4a6fcff2722e1037f7e669ddab/lighthouse-audit.html",
+      "sha256": "73c54c0fafa8c8dbe4d20a8bc26b1ad044457d9827d6b3322b27ace4672276c6",
+      "bytes": 40579,
       "contentType": "text/html; charset=utf-8",
       "visibility": "public",
       "trustTier": "untrusted:community",
       "trusted": false,
       "actor": "local-snapshot",
-      "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
-      "createdAt": "2026-11-28T00:15:53.990Z"
+      "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+      "createdAt": "2026-11-28T00:23:32.664Z"
     },
     {
       "name": "lighthouse-audit.json",
-      "namespace": "untrusted/local-snapshot/fd805f5525964d7a8ad9abebc71c5d24de2f9824",
-      "key": "untrusted/local-snapshot/fd805f5525964d7a8ad9abebc71c5d24de2f9824/lighthouse-audit.json",
-      "sha256": "3f8b47a0833f282c51abed823272881aecce613f97294f442019805262f71b5d",
-      "bytes": 18776,
+      "namespace": "untrusted/local-snapshot/1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+      "key": "untrusted/local-snapshot/1dd29e1c6202eb4a6fcff2722e1037f7e669ddab/lighthouse-audit.json",
+      "sha256": "96ab4b057b18ab06bb80b9a74b4cc2e25f02a76313ce6fead5ba758f460f804e",
+      "bytes": 17900,
       "contentType": "application/json",
       "visibility": "public",
       "trustTier": "untrusted:community",
       "trusted": false,
       "actor": "local-snapshot",
-      "commitSha": "fd805f5525964d7a8ad9abebc71c5d24de2f9824",
-      "createdAt": "2026-11-28T00:15:53.989Z"
+      "commitSha": "1dd29e1c6202eb4a6fcff2722e1037f7e669ddab",
+      "createdAt": "2026-11-28T00:23:32.663Z"
     }
   ],
   "todos": [

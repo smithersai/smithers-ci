@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
-<title>Smithers CI Backpressure Audit · smithersai/smithers-ci @ fd805f552596</title>
+<title>Smithers CI Backpressure Audit · smithersai/smithers-ci @ 1dd29e1c6202</title>
 <style>
 :root {
   --bg: #0b100e;
@@ -135,7 +135,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
     <div class="topbar">
       <h1>Smithers CI Backpressure Audit Report</h1>
       <div class="topbar-right">
-        <div class="meta">smithersai/smithers-ci @ fd805f552596 · 2026-11-28T00:15:53.985Z</div>
+        <div class="meta">smithersai/smithers-ci @ 1dd29e1c6202 · Checkout clean · 2026-11-28T00:23:32.661Z</div>
         <label class="theme-toggle" for="lh-light-mode">Toggle Light / Dark</label>
       </div>
     </div>
@@ -201,17 +201,17 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   </div>
       </label>
 
-      <label class="gauge-link" for="filter-security-trust" title="Filter to Security &amp; Trust Isolation">
+      <label class="gauge-link" for="filter-security-trust" title="Filter to Trust Source Inventory &amp; Execution Policy">
         
   <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
-    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Security score 100 out of 100">
+    <svg viewBox="0 0 100 100" width="96" height="96" role="img" aria-label="Trust inventory score 100 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
       <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
         stroke-dasharray="251.33"
         stroke-dashoffset="0.00" />
       <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
     </svg>
-    <div class="lh-gauge-label">Security</div>
+    <div class="lh-gauge-label">Trust inventory</div>
   </div>
       </label>
 
@@ -263,7 +263,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <label class="filter-pill" for="filter-all">All (20)</label>
       <label class="filter-pill" for="filter-correctness">Correctness (58)</label>
       <label class="filter-pill" for="filter-cache-speed">Cache &amp; Speed (85)</label>
-      <label class="filter-pill" for="filter-security-trust">Security (100)</label>
+      <label class="filter-pill" for="filter-security-trust">Trust inventory (100)</label>
       <label class="filter-pill" for="filter-formal-fuzz">Formal &amp; Fuzz (50)</label>
       <label class="filter-pill" for="filter-wiki-docs">Wiki &amp; Docs (100)</label>
       <label class="filter-pill" for="filter-release-cloud">Cloud Release (100)</label>
@@ -428,17 +428,17 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <div class="category-title-wrap">
         
   <div class="lh-gauge" style="--gauge-color:var(--lh-pass)">
-    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Security score 100 out of 100">
+    <svg viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="Trust inventory score 100 out of 100">
       <circle class="lh-gauge-base" cx="50" cy="50" r="40" />
       <circle class="lh-gauge-arc" cx="50" cy="50" r="40"
         stroke-dasharray="251.33"
         stroke-dashoffset="0.00" />
       <text class="lh-gauge-num" x="50" y="55" text-anchor="middle">100</text>
     </svg>
-    <div class="lh-gauge-label">Security</div>
+    <div class="lh-gauge-label">Trust inventory</div>
   </div>
         <div>
-          <h2>Security &amp; Trust Isolation</h2>
+          <h2>Trust Source Inventory &amp; Execution Policy</h2>
           <p class="muted">4 passed · 0 warnings · 0 failed</p>
         </div>
       </div>
@@ -448,13 +448,13 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   <details class="audit-row" >
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
-      <span class="audit-title">Untrusted Cache-Poisoning Immunity</span>
-      <span class="audit-value">Hard isolated</span>
+      <span class="audit-title">Cache Isolation Source Files</span>
+      <span class="audit-value">Modules present</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
-      <p>Community runs get fast cache reads while write operations to /ac and /cas are hard-blocked.</p>
-      <ul class="evidence-list"><li><code>ExecutionTrust enforces allowCacheWrite: false for untrusted:community</code></li><li><code>SharedObjectStore rejects /ac and /cas writes with cache_write_forbidden for untrusted callers</code></li><li><code>Untrusted artifacts isolate under untrusted/&lt;actor&gt;/&lt;sha&gt;/</code></li></ul>
+      <p>Checks for the trust and object-store source files.</p>
+      <ul class="evidence-list"><li><code>Trust source file: present</code></li><li><code>Object store source file: present</code></li></ul>
       
       <div class="audit-meta">ID: <code>untrusted-cache-isolation</code> · Weight: 4 · 0ms</div>
     </div>
@@ -463,12 +463,12 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   <details class="audit-row" >
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
-      <span class="audit-title">Trusted-Only Merge &amp; Release Gates</span>
+      <span class="audit-title">Current Execution Policy</span>
       <span class="audit-value">PREVIEW ONLY</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
-      <p>Only externally verified controlled Smithers sandboxes or maintainers can clear backpressure gates.</p>
+      <p>Reports gate eligibility for this execution.</p>
       <ul class="evidence-list"><li><code>Current execution tier: untrusted:community (local-snapshot)</code></li><li><code>Gate satisfaction eligible: no (untrusted local/community preview)</code></li></ul>
       
       <div class="audit-meta">ID: <code>untrusted-gate-non-bypass</code> · Weight: 4 · 0ms</div>
@@ -478,13 +478,13 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   <details class="audit-row" >
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
-      <span class="audit-title">One-Time-Use Sandbox &amp; Agent Auth</span>
-      <span class="audit-value">Single-use + PKCE</span>
+      <span class="audit-title">Token Implementation File</span>
+      <span class="audit-value">Module present</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
-      <p>Mints single-use smo_ tokens stored as SHA-256 digests with PKCE S256 and person-only guards.</p>
-      <ul class="evidence-list"><li><code>Raw tokens burn atomically on first redemption (already_redeemed on replay)</code></li><li><code>Person-only actions (pr/merge, todo/commit, release/publish, secrets/write) stripped at mint and refused 403 at runtime</code></li><li><code>Mode-600 file output with symlink and permission checks</code></li></ul>
+      <p>Checks for the one-time token source file.</p>
+      <ul class="evidence-list"><li><code>src/auth/OneTimeToken.ts present</code></li></ul>
       
       <div class="audit-meta">ID: <code>one-time-sandbox-auth</code> · Weight: 3 · 0ms</div>
     </div>
@@ -493,12 +493,12 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   <details class="audit-row" >
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
-      <span class="audit-title">Root-Input-Tracing Security Coverage</span>
-      <span class="audit-value">5 boundaries traced</span>
+      <span class="audit-title">Documented Trust Boundaries</span>
+      <span class="audit-value">5 boundaries documented</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
-      <p>Every privileged boundary traces back to its exact origin input with zero untrusted bypasses.</p>
+      <p>Counts entries in the reference table.</p>
       <ul class="evidence-list"><li><code>Shared Object Store Cache Write (/ac, /cas) -&gt; ExecutionTrust.verifyExecutionTrust + ObjectStore.putCache</code></li><li><code>Trusted Artifact Pointer Publication -&gt; McpServer destination scope check + ObjectStore untrusted-cas isolation</code></li><li><code>Merge / Release Gate Satisfaction -&gt; ExecutionTrust.evaluateGate + FactoryState.mergePull receipt verification</code></li><li><code>One-Time Sandbox Auth Token Minting &amp; PKCE Exchange -&gt; OneTimeTokenStore + FactoryHubDO atomic SQLite transactionSync CAS</code></li><li><code>Person-Only Actions (pr/merge, todo/commit, release/publish, secrets/write) -&gt; ExecutionTrust.authorizeAction (default-deny) + McpServer guard</code></li></ul>
       
       <div class="audit-meta">ID: <code>root-input-tracing</code> · Weight: 2 · 0ms</div>
@@ -594,7 +594,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>Verified repository wiki pages with intact [[wikilinks]] and .smithers/coding-project.json.</p>
       <ul class="evidence-list"><li><code>9 markdown wiki pages discovered under wiki/</code></li><li><code>0 broken [[wikilinks]]</code></li><li><code>.smithers/coding-project.json catalog present</code></li></ul>
       
-      <div class="audit-meta">ID: <code>wiki-catalog-freshness</code> · Weight: 4 · 1ms</div>
+      <div class="audit-meta">ID: <code>wiki-catalog-freshness</code> · Weight: 4 · 0ms</div>
     </div>
   </details>
 
@@ -663,7 +663,7 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <p>.smithers/home.json customizes the factory for maintainers, contributors, and viewers.</p>
       <ul class="evidence-list"><li><code>.smithers/home.json declares maintainer, contributor, and everyone sections within @smthrs/views bounds</code></li></ul>
       
-      <div class="audit-meta">ID: <code>personalized-home-manifest</code> · Weight: 3 · 1ms</div>
+      <div class="audit-meta">ID: <code>personalized-home-manifest</code> · Weight: 3 · 0ms</div>
     </div>
   </details>
 
@@ -675,8 +675,8 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
-      <p>.smithers/factory.json declares v1 Plugin.Manifest triggers and QuickJS-safe flows.</p>
-      <ul class="evidence-list"><li><code>.smithers/factory.json declares 7 v1 triggers (push, PR, manual, schedule)</code></li></ul>
+      <p>.smithers/factory.json declares factory triggers.</p>
+      <ul class="evidence-list"><li><code>.smithers/factory.json declares 7 triggers</code></li></ul>
       
       <div class="audit-meta">ID: <code>smithers-cloud-triggers</code> · Weight: 3 · 0ms</div>
     </div>
@@ -685,13 +685,13 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   <details class="audit-row" >
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
-      <span class="audit-title">Auto-Release &amp; Docs Publish on Mirror Merge</span>
-      <span class="audit-value">2 workflows / 4 jobs clean</span>
+      <span class="audit-title">Mirror Workflow Inventory</span>
+      <span class="audit-value">2 workflows / 4 jobs, no static findings</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
-      <p>Parses .github/workflows to verify mirror release triggers and zero secret leakage to untrusted PRs.</p>
-      <ul class="evidence-list"><li><code>Inventoried 2 workflows (4 jobs, 20 steps)</code></li><li><code>.github/workflows/smithers-mirror-release.yml present</code></li><li><code>.github/workflows/untrusted-pr-check.yml isolates fork PRs</code></li></ul>
+      <p>Inventories workflow files and summarizes static checks.</p>
+      <ul class="evidence-list"><li><code>Inventoried 2 workflows (4 jobs, 20 steps)</code></li><li><code>.github/workflows/smithers-mirror-release.yml present</code></li><li><code>.github/workflows/untrusted-pr-check.yml present</code></li></ul>
       
       <div class="audit-meta">ID: <code>github-mirror-release-pipeline</code> · Weight: 3 · 1ms</div>
     </div>
@@ -700,13 +700,13 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   <details class="audit-row" >
     <summary>
       <span class="dot dot-pass" aria-hidden="true"></span>
-      <span class="audit-title">Authenticated Cloud MCP Server</span>
+      <span class="audit-title">MCP Server Source File</span>
       <span class="audit-value">Module present</span>
       <span class="audit-score">100</span>
     </summary>
     <div class="audit-body">
-      <p>Exposes Streamable HTTP MCP tools for artifacts, TODOs, issues, PRs, stacked changesets, wiki, and history.</p>
-      <ul class="evidence-list"><li><code>src/mcp/McpServer.ts present with OAuth 2.1 + PKCE S256 discovery and one-time token exchange</code></li></ul>
+      <p>Checks for the MCP server source file.</p>
+      <ul class="evidence-list"><li><code>src/mcp/McpServer.ts present</code></li></ul>
       
       <div class="audit-meta">ID: <code>cloud-mcp-server</code> · Weight: 3 · 0ms</div>
     </div>
